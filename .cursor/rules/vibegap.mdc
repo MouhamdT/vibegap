@@ -1,0 +1,80 @@
+---
+description: VibeGap project architecture and coding rules
+alwaysApply: true
+---
+
+You are helping build VibeGap, a full-stack AI web app that compares social-media hype with real-world place review data.
+
+Core idea:
+VibeGap checks whether a place's online "vibe" matches reality.
+
+Example:
+Social media says: "quiet hidden gem cafe"
+Google reviews say: "crowded, loud, overpriced"
+VibeGap shows the mismatch.
+
+Tech stack:
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Server-side API routes
+- Modular provider architecture
+- Mock data first, real APIs later
+
+Main product flow:
+1. User searches for a place.
+2. App fetches or mocks place data.
+3. App fetches or mocks social hype data.
+4. Truth engine compares hype vs reality.
+5. App returns a VibeGap Report.
+
+Important rules:
+- Do not build everything at once.
+- Build in small versions.
+- Use mock data before real APIs.
+- Keep external API calls server-side only.
+- Never expose API keys to the browser.
+- Keep shared types in lib/types.
+- Keep place providers in lib/places.
+- Keep social providers in lib/social.
+- Keep scoring/AI logic in lib/ai.
+- Avoid using any.
+- Prefer clean, readable, beginner-friendly code.
+- The app should look polished and portfolio-worthy.
+
+MVP folder structure:
+
+app/
+  page.tsx
+  api/
+    vibecheck/
+      route.ts
+
+components/
+  SearchBar.tsx
+  ProcessingSteps.tsx
+  VibeReport.tsx
+  VisualGrid.tsx
+  RealityPanel.tsx
+  ScoreCard.tsx
+
+lib/
+  types/
+    vibecheck.ts
+  places/
+    mockPlacesProvider.ts
+  social/
+    mockSocialProvider.ts
+  ai/
+    truthEngine.ts
+
+Product style:
+- Premium travel product
+- Clean white space
+- Modern typography
+- Rounded cards
+- Soft shadows
+- Minimal but impressive
+- Mobile-friendly
+
+Do not add authentication, database, real TikTok scraping, OpenAI, or Google Places yet.
