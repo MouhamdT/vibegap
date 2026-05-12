@@ -74,7 +74,8 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
   const intentInitial = detectIntentFromQuery(searchQuery);
   const classification = classifyQueryMode(searchQuery, intentInitial);
   const detectedIntent = resolveReportIntent(searchQuery, classification);
-  const place = await resolvePlaceForReport(searchQuery, classification, detectedIntent);
+  const resolvedPlace = await resolvePlaceForReport(searchQuery, classification, detectedIntent);
+  const { place, googlePlacesFallback, suggestPlaceDisambiguation } = resolvedPlace;
   const socialHighlights = getMockSocialForPlace(place);
 
   const hypeIndex = averageHypeIndex(socialHighlights);
@@ -148,6 +149,8 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
     queryExplanation: classification.queryExplanation,
     queryContextBanner: classification.queryContextBanner,
     placeIntentGoalDisplay,
+    googlePlacesFallback,
+    suggestPlaceDisambiguation,
     place,
     socialHighlights,
     socialSummary,

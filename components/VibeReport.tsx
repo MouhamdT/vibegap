@@ -29,12 +29,12 @@ function TagList({ title, items, variant }: { title: string; items: string[]; va
 
 function scoreHintLabels(mode: QueryMode): { intent: string; vibe: string } {
   if (mode === "goal_search") {
-    return { intent: "Primary for this search", vibe: "Supporting context" };
+    return { intent: "Primary for this search", vibe: "Mock social comparison" };
   }
   if (mode === "specific_place") {
-    return { intent: "Neutral add-on", vibe: "Primary for this search" };
+    return { intent: "Neutral add-on", vibe: "Mock social comparison" };
   }
-  return { intent: "Your goal", vibe: "Social vs reviews" };
+  return { intent: "Your goal", vibe: "Mock social comparison" };
 }
 
 function QuickVerdictCard({ report }: { report: VibeReportModel }) {
@@ -123,6 +123,21 @@ export function VibeReport({ report }: VibeReportProps) {
         <p className="text-lg font-medium tracking-tight text-stone-900 sm:text-xl">{report.searchQueryDisplay}</p>
         <p className="text-sm font-medium text-stone-800">{report.queryContextBanner}</p>
         <p className="max-w-2xl text-xs leading-relaxed text-stone-500">{report.queryExplanation}</p>
+        {report.googlePlacesFallback === "no_confident_match" ? (
+          <p className="max-w-2xl text-xs leading-relaxed text-stone-500">
+            No confident Google Places match found — using illustrative mock data.
+          </p>
+        ) : null}
+        {report.googlePlacesFallback === "lookup_unavailable" ? (
+          <p className="max-w-2xl text-xs leading-relaxed text-stone-500">
+            Google Places lookup unavailable — using illustrative mock data.
+          </p>
+        ) : null}
+        {report.suggestPlaceDisambiguation ? (
+          <p className="max-w-2xl text-xs leading-relaxed text-stone-500">
+            Tip: add a city or neighborhood for a more precise match.
+          </p>
+        ) : null}
         {showPlaceGoalRow ? (
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-stone-600">
             <span>
@@ -188,8 +203,8 @@ export function VibeReport({ report }: VibeReportProps) {
               All scores
             </h2>
             <p className="max-w-2xl text-xs leading-relaxed text-stone-500">
-              VibeGap = mock social vs. review signals. Intent Fit = your goal vs. likely experience. Other rows add
-              context (waits, laptops, price mismatch risk).
+              VibeGap = mock social comparison vs. available place signals. Intent Fit = your goal vs. likely
+              experience. Other rows add context (waits, laptops, price mismatch risk).
             </p>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <ScoreCard label="VibeGap" value={score.vibeGapScore} hint={score.verdict} emphasis />

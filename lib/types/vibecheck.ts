@@ -121,6 +121,9 @@ export interface VibeGapScore {
   intentFitExplanationBullets: string[];
 }
 
+/** When a Google Places attempt did not yield live place data (mock fallback or not applicable). */
+export type GooglePlacesFallbackKind = "none" | "no_confident_match" | "lookup_unavailable";
+
 export interface VibeReport {
   /** Typo-normalized, title-cased query for display (detection still uses the raw search). */
   searchQueryDisplay: string;
@@ -136,6 +139,10 @@ export interface VibeReport {
    * Null otherwise.
    */
   placeIntentGoalDisplay: string | null;
+  /** Google Text Search was attempted for named-venue modes but we fell back to mock place data. */
+  googlePlacesFallback: GooglePlacesFallbackKind;
+  /** Short query without obvious geography — suggest adding a city for better Google matching. */
+  suggestPlaceDisambiguation: boolean;
   place: PlaceData;
   socialHighlights: SocialPost[];
   /** One-paragraph read of what social is selling. */

@@ -25,6 +25,10 @@ function isVibeReportPayload(value: unknown): value is { report: VibeReportModel
   const pigd = reportUnknown.placeIntentGoalDisplay;
   if (!(pigd === null || typeof pigd === "string")) return false;
 
+  const gpf = reportUnknown.googlePlacesFallback;
+  if (gpf !== "none" && gpf !== "no_confident_match" && gpf !== "lookup_unavailable") return false;
+  if (typeof reportUnknown.suggestPlaceDisambiguation !== "boolean") return false;
+
   if (typeof reportUnknown.generatedAt !== "string") return false;
   if (typeof reportUnknown.socialSummary !== "string") return false;
   if (typeof reportUnknown.realitySummary !== "string") return false;
