@@ -120,7 +120,10 @@ export function VibeReport({ report }: VibeReportProps) {
           <span className="font-medium text-stone-700">{"$".repeat(report.place.priceLevel)}</span>
           <span className="text-stone-400"> · {detectedIntent.label}</span>
         </p>
-        <p className="text-xs text-stone-400 tabular-nums">Illustrative mock · {new Date(report.generatedAt).toLocaleString()}</p>
+        <p className="text-xs text-stone-400 tabular-nums">
+          {report.place.dataSource === "google" ? "Google Places data" : "Illustrative mock data"} ·{" "}
+          {new Date(report.generatedAt).toLocaleString()}
+        </p>
       </header>
 
       <QuickVerdictCard report={report} />

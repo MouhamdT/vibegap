@@ -1,6 +1,6 @@
 import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
-import { getMockPlaceForQuery } from "@/lib/places/mockPlacesProvider";
+import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
 import { getMockSocialContentMode, getMockSocialForPlace } from "@/lib/social/mockSocialProvider";
 import type {
   DetectedIntent,
@@ -41,15 +41,11 @@ function resolveReportIntent(searchQuery: string, queryMode: QueryMode): Detecte
  * - VibeGap: social narrative vs. review narrative (never uses “user goal” rules).
  * - Intent Fit: inferred query goal vs. what reviews + posts imply about the visit.
  */
-export function buildMockVibeReport(searchQuery: string): VibeReport {
+export async function buildMockVibeReport(searchQuery: string): Promise<VibeReport> {
   const intentInitial = detectIntentFromQuery(searchQuery);
   const classification = classifyQueryMode(searchQuery, intentInitial);
   const detectedIntent = resolveReportIntent(searchQuery, classification.queryMode);
-  const place = getMockPlaceForQuery(searchQuery, {
-    queryMode: classification.queryMode,
-    placeNameCandidate: classification.placeNameCandidate,
-    goalIntentKind: classification.queryMode === "goal_search" ? detectedIntent.kind : undefined,
-  });
+  const place = await resolvePlaceForReport(searchQuery, classification, detectedIntent);
   const socialHighlights = getMockSocialForPlace(place);
 
   const hypeIndex = averageHypeIndex(socialHighlights);

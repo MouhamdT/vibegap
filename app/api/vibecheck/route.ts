@@ -31,6 +31,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
   }
 
-  const report = buildMockVibeReport(query);
+  const report = await buildMockVibeReport(query);
   return NextResponse.json({ report });
 }

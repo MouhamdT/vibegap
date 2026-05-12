@@ -41,10 +41,14 @@ export interface PlaceData {
   recentReviewSummary: string;
   complaints: string[];
   positives: string[];
-  /**
-   * When set on goal_search mock places, nudges illustrative social/review flavor (server-only).
-   */
+  /** When set on goal_search mock places, nudges illustrative social/review flavor (server-only). */
   mockGoalIntentKind?: UserIntentKind;
+  /** Provenance of place fields (mock vs Google Places). */
+  dataSource?: "mock" | "google";
+  /** Google resource id when `dataSource` is `google`. */
+  googlePlaceId?: string;
+  /** True when name/address/reviews come from Google Places (still paired with mock social). */
+  isRealPlaceData?: boolean;
 }
 
 export type SocialSource = "tiktok" | "instagram" | "youtube";

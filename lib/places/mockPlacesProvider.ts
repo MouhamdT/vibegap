@@ -287,6 +287,8 @@ export function getMockPlaceForQuery(query: string, opts?: MockPlaceOptions): Pl
     recentReviewSummary,
     complaints,
     positives,
+    dataSource: "mock",
+    isRealPlaceData: false,
     ...(mockGoalIntentKind ? { mockGoalIntentKind } : {}),
   };
 }
