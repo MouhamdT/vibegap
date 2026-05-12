@@ -50,6 +50,13 @@ function QuickVerdictCard({ report }: { report: VibeReportModel }) {
       <p id="quick-verdict-heading" className="text-[11px] font-medium uppercase tracking-[0.18em] text-stone-500">
         Quick verdict
       </p>
+      <p className="mt-1 text-[10px] font-normal tracking-wide text-stone-400">
+        {report.narrativeSource === "gemini"
+          ? "Gemini-polished summary"
+          : report.narrativeSource === "openai"
+            ? "AI-polished summary"
+            : "Rule-based summary"}
+      </p>
       <h2 className="mt-3 text-balance text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">
         {q.title}
       </h2>

@@ -162,6 +162,8 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
     avoidIf,
     recommendation,
     generatedAt: new Date().toISOString(),
+    narrativeSource: "rules",
+    aiNarrativeUsed: false,
   };
 }
 

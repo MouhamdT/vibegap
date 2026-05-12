@@ -1,5 +1,8 @@
+import { applyAiNarrativeToReport } from "@/lib/ai/applyAiNarrative";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
 import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
 
 export async function GET() {
   return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
@@ -32,5 +35,7 @@ export async function POST(request: Request) {
   }
 
   const report = await buildMockVibeReport(query);
-  return NextResponse.json({ report });
+  const finalReport = await applyAiNarrativeToReport(report);
+
+  return NextResponse.json({ report: finalReport });
 }

@@ -124,6 +124,9 @@ export interface VibeGapScore {
 /** When a Google Places attempt did not yield live place data (mock fallback or not applicable). */
 export type GooglePlacesFallbackKind = "none" | "no_confident_match" | "lookup_unavailable";
 
+/** How the quick verdict / recommendation copy was produced (scores always rule-based). */
+export type NarrativeSource = "rules" | "openai" | "gemini";
+
 export interface VibeReport {
   /** Typo-normalized, title-cased query for display (detection still uses the raw search). */
   searchQueryDisplay: string;
@@ -158,4 +161,8 @@ export interface VibeReport {
   avoidIf: string[];
   recommendation: Recommendation;
   generatedAt: string;
+  /** How the quick verdict / recommendation copy was produced (scores always rule-based). */
+  narrativeSource: NarrativeSource;
+  /** True when an LLM successfully supplied polished copy merged into this report. */
+  aiNarrativeUsed: boolean;
 }

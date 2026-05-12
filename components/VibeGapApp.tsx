@@ -29,6 +29,15 @@ function isVibeReportPayload(value: unknown): value is { report: VibeReportModel
   if (gpf !== "none" && gpf !== "no_confident_match" && gpf !== "lookup_unavailable") return false;
   if (typeof reportUnknown.suggestPlaceDisambiguation !== "boolean") return false;
 
+  if (
+    reportUnknown.narrativeSource !== "rules" &&
+    reportUnknown.narrativeSource !== "openai" &&
+    reportUnknown.narrativeSource !== "gemini"
+  ) {
+    return false;
+  }
+  if (typeof reportUnknown.aiNarrativeUsed !== "boolean") return false;
+
   if (typeof reportUnknown.generatedAt !== "string") return false;
   if (typeof reportUnknown.socialSummary !== "string") return false;
   if (typeof reportUnknown.realitySummary !== "string") return false;
