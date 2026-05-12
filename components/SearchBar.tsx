@@ -4,13 +4,13 @@ import { useState } from "react";
 
 export type SearchBarProps = {
   placeholder?: string;
-  /** Called with the trimmed query on submit — wire to `/api/vibecheck` in a later version. */
+  /** Called with the trimmed query on submit (parent typically POSTs to `/api/vibecheck`). */
   onSearch?: (query: string) => void | Promise<void>;
   disabled?: boolean;
 };
 
 export function SearchBar({
-  placeholder = "Search a restaurant, café, hotel…",
+  placeholder = "Search a restaurant, café, hotel, or venue…",
   onSearch,
   disabled = false,
 }: SearchBarProps) {

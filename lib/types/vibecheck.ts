@@ -2,41 +2,144 @@
  * Shared types for VibeGap — social hype vs. review reality.
  */
 
+export type PriceLevel = 1 | 2 | 3 | 4;
+
+export type ReviewThemeSentiment = "positive" | "negative" | "mixed";
+
+export interface ReviewTheme {
+  id: string;
+  label: string;
+  sentiment: ReviewThemeSentiment;
+  /** How often this theme appears in reviews (0–100). */
+  strength: number;
+}
+
+export interface Recommendation {
+  headline: string;
+  body: string;
+}
+
+/** Short, user-facing summary shown above the fold (V2.2). */
+export interface QuickVerdict {
+  title: string;
+  /** One or two plain sentences — what to do, in human language. */
+  explanation: string;
+  /** Three scannable reasons tied to the same mock data as the full report. */
+  evidenceBullets: readonly [string, string, string];
+}
+
 export interface PlaceData {
   id: string;
   name: string;
   address: string;
   category: string;
-  /** Aggregated rating from review sources (e.g. 1–5). */
+  /** Aggregated rating from review sources (1–5). */
   averageRating: number;
   reviewCount: number;
+  priceLevel: PriceLevel;
+  reviewThemes: ReviewTheme[];
+  recentReviewSummary: string;
+  complaints: string[];
+  positives: string[];
+  /**
+   * When set on goal_search mock places, nudges illustrative social/review flavor (server-only).
+   */
+  mockGoalIntentKind?: UserIntentKind;
 }
+
+export type SocialSource = "tiktok" | "instagram" | "youtube";
 
 export interface SocialPost {
   id: string;
-  platform: "tiktok" | "instagram" | "x" | "other";
-  excerpt: string;
+  source: SocialSource;
+  caption: string;
+  hashtags: string[];
+  vibeTags: string[];
+  /** Placeholder thumbnail; null uses a gradient frame in the UI. */
+  thumbnailUrl: string | null;
+  postedAt: string;
   /** How amplified the narrative feels on social (0–100). */
   hypeScore: number;
-  postedAt: string;
 }
 
+/** What the user appears to be optimizing for, inferred from the search string only. */
+export type UserIntentKind =
+  | "study_work"
+  | "date_night"
+  | "budget_celebration"
+  | "budget_eats"
+  | "luxury"
+  | "quiet_calm"
+  | "party_nightlife"
+  | "family"
+  | "venue_lookup";
+
+export interface DetectedIntent {
+  kind: UserIntentKind;
+  /** Short human-readable label for UI. */
+  label: string;
+  /** How explicit the goal was in the query (venue-only searches are low). */
+  confidence: "high" | "medium" | "low";
+  /** Query tokens or phrases that supported the classification (illustrative). */
+  matchedSignals: string[];
+}
+
+/** How the search string was read for scoring and copy (V2.5). */
+export type QueryMode = "goal_search" | "specific_place" | "place_with_intent";
+
 export interface VibeGapScore {
-  /** How far apart hype and reality feel (0 = perfect match, 100 = extreme gap). */
-  gapMagnitude: number;
-  /** Short label for the verdict, e.g. "Mostly aligned" or "Big mismatch". */
+  /**
+   * Social hype vs. review-reality mismatch (0 = aligned, 100 = strong conflict).
+   * Does not measure whether the venue fits the user’s goal — see intentFitScore.
+   */
+  vibeGapScore: number;
+  /**
+   * How well the modeled venue matches the user’s inferred goal (0 = poor fit, 100 = strong fit).
+   * Independent of whether social disagrees with reviews.
+   */
+  intentFitScore: number;
+  intentFitVerdict: string;
+  /** How “touristy” or crowded-tourist patterns feel from reviews (0–100). */
+  touristDensityScore: number;
+  /** Likelihood of long waits / lines (0–100). */
+  waitRiskScore: number;
+  /** Whether reviews support laptop / work-friendly visits (0–100). */
+  laptopFriendlyScore: number;
+  /** Higher = stronger mismatch between budget-friendly social framing and review price/value cues (0–100). */
+  priceRealityScore: number;
+  /** One-line read of the VibeGap (social vs. reviews only). */
   verdict: string;
-  /** Social-side intensity (0–100). */
   hypeIndex: number;
-  /** Review-side intensity (0–100). */
   realityIndex: number;
+  /** Evidence for VibeGap Score — social narrative vs. review narrative. */
+  vibeGapExplanationBullets: string[];
+  /** Evidence for Intent Fit — user goal vs. what reviews + posts imply you will get. */
+  intentFitExplanationBullets: string[];
 }
 
 export interface VibeReport {
+  /** Typo-normalized, title-cased query for display (detection still uses the raw search). */
+  searchQueryDisplay: string;
+  queryMode: QueryMode;
+  /** Venue substring for `place_with_intent`; display form for `specific_place`; null for pure goal search. */
+  placeNameCandidate: string | null;
+  /** One sentence: how we interpreted the query (mock-only). */
+  queryExplanation: string;
+  /** Short header line, e.g. “Checking fit for your goal.” */
+  queryContextBanner: string;
   place: PlaceData;
   socialHighlights: SocialPost[];
-  /** Plain-language summary of what reviews actually say. */
+  /** One-paragraph read of what social is selling. */
+  socialSummary: string;
+  /** What reviews consistently report. */
   realitySummary: string;
   score: VibeGapScore;
+  /** Inferred visit goal from the raw search query (mock heuristic). */
+  detectedIntent: DetectedIntent;
+  /** Fast read: verdict, scores, reasons, tags — before full analysis. */
+  quickVerdict: QuickVerdict;
+  bestFor: string[];
+  avoidIf: string[];
+  recommendation: Recommendation;
   generatedAt: string;
 }
