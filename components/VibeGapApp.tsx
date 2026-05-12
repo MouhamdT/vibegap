@@ -22,6 +22,9 @@ function isVibeReportPayload(value: unknown): value is { report: VibeReportModel
   if (typeof reportUnknown.queryExplanation !== "string") return false;
   if (typeof reportUnknown.queryContextBanner !== "string") return false;
 
+  const pigd = reportUnknown.placeIntentGoalDisplay;
+  if (!(pigd === null || typeof pigd === "string")) return false;
+
   if (typeof reportUnknown.generatedAt !== "string") return false;
   if (typeof reportUnknown.socialSummary !== "string") return false;
   if (typeof reportUnknown.realitySummary !== "string") return false;

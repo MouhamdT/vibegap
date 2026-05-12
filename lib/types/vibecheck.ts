@@ -131,6 +131,11 @@ export interface VibeReport {
   queryExplanation: string;
   /** Short header line, e.g. “Checking fit for your goal.” */
   queryContextBanner: string;
+  /**
+   * When `queryMode` is `place_with_intent`, a compact goal line for the header (e.g. “Quiet visit”).
+   * Null otherwise.
+   */
+  placeIntentGoalDisplay: string | null;
   place: PlaceData;
   socialHighlights: SocialPost[];
   /** One-paragraph read of what social is selling. */

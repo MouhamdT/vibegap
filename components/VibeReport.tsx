@@ -1,4 +1,5 @@
 import type { QueryMode, VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
+import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { RealityPanel } from "@/components/RealityPanel";
 import { ScoreCard } from "@/components/ScoreCard";
 import { VisualGrid } from "@/components/VisualGrid";
@@ -104,6 +105,16 @@ export function VibeReport({ report }: VibeReportProps) {
   }
 
   const { score, detectedIntent } = report;
+  const placeSourceLabel =
+    report.place.dataSource === "google" ? "Google Places data" : "Illustrative mock place data";
+  const placeNameForRow =
+    report.placeNameCandidate !== null && report.placeNameCandidate !== ""
+      ? formatSearchQueryForDisplay(report.placeNameCandidate)
+      : null;
+  const showPlaceGoalRow =
+    report.queryMode === "place_with_intent" &&
+    placeNameForRow !== null &&
+    report.placeIntentGoalDisplay;
 
   return (
     <article className="space-y-12 sm:space-y-14" aria-label="VibeGap report">
@@ -112,16 +123,35 @@ export function VibeReport({ report }: VibeReportProps) {
         <p className="text-lg font-medium tracking-tight text-stone-900 sm:text-xl">{report.searchQueryDisplay}</p>
         <p className="text-sm font-medium text-stone-800">{report.queryContextBanner}</p>
         <p className="max-w-2xl text-xs leading-relaxed text-stone-500">{report.queryExplanation}</p>
+        {showPlaceGoalRow ? (
+          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-stone-600">
+            <span>
+              <span className="text-stone-500">Place</span>{" "}
+              <span className="font-medium text-stone-800">
+                {placeNameForRow}
+              </span>
+            </span>
+            <span>
+              <span className="text-stone-500">Goal</span>{" "}
+              <span className="font-medium text-stone-800">{report.placeIntentGoalDisplay}</span>
+            </span>
+          </div>
+        ) : null}
         <h1 className="pt-4 text-2xl font-semibold tracking-tight text-stone-900 sm:text-3xl">{report.place.name}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-stone-600">{report.place.address}</p>
         <p className="text-xs text-stone-500">
           <span className="font-medium text-stone-700">{report.place.averageRating.toFixed(1)}</span> / 5 ·{" "}
           {report.place.reviewCount.toLocaleString()} reviews ·{" "}
           <span className="font-medium text-stone-700">{"$".repeat(report.place.priceLevel)}</span>
-          <span className="text-stone-400"> · {detectedIntent.label}</span>
+          {showPlaceGoalRow ? null : (
+            <span className="text-stone-400"> · {detectedIntent.label}</span>
+          )}
         </p>
         <p className="text-xs text-stone-400 tabular-nums">
-          {report.place.dataSource === "google" ? "Google Places data" : "Illustrative mock data"} ·{" "}
+          <span className="text-stone-500">{placeSourceLabel}</span>
+          {" · "}
+          <span className="text-stone-500">Mock social signals</span>
+          {" · "}
           {new Date(report.generatedAt).toLocaleString()}
         </p>
       </header>
@@ -158,8 +188,8 @@ export function VibeReport({ report }: VibeReportProps) {
               All scores
             </h2>
             <p className="max-w-2xl text-xs leading-relaxed text-stone-500">
-              VibeGap = social vs. reviews. Intent Fit = your goal vs. what this mock implies. Other rows add context
-              (waits, laptops, price mismatch risk).
+              VibeGap = mock social vs. review signals. Intent Fit = your goal vs. likely experience. Other rows add
+              context (waits, laptops, price mismatch risk).
             </p>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <ScoreCard label="VibeGap" value={score.vibeGapScore} hint={score.verdict} emphasis />

@@ -5,10 +5,10 @@ export type ProcessingStep = {
 };
 
 export const VIBECHECK_STEPS: ProcessingStep[] = [
-  { id: "1", label: "Locating place", description: "Resolving a fictional address tied to your search." },
-  { id: "2", label: "Scanning social hype", description: "Reading tone, tags, and implied promises." },
-  { id: "3", label: "Reading review reality", description: "Synthesizing themes, wins, and friction points." },
-  { id: "4", label: "Scoring the gap", description: "Applying transparent, rule-based heuristics (mock)." },
+  { id: "1", label: "Locating place", description: "Resolving the best place match for your search." },
+  { id: "2", label: "Scanning social hype", description: "Using mock social signals for this prototype." },
+  { id: "3", label: "Reading review reality", description: "Reading available place/review signals." },
+  { id: "4", label: "Scoring the gap", description: "Applying transparent rule-based heuristics." },
 ];
 
 export type ProcessingStepsStatus = "idle" | "loading" | "success";
