@@ -43,6 +43,26 @@ export interface RankedCandidate {
   avoidIf: string;
 }
 
+export interface RecommendationScoringWeight {
+  label: string;
+  weight: number;
+}
+
+export interface RecommendationInsights {
+  topPickName: string;
+  topPickReason: string;
+  decisionSummary: string;
+  mainTradeoff: string;
+  strongestRisk: string;
+  confidenceNote: string;
+  scoringWeights: RecommendationScoringWeight[];
+  decisionCounts: {
+    go: number;
+    maybe: number;
+    skip: number;
+  };
+}
+
 /** Short, user-facing summary shown above the fold (V2.2). */
 export interface QuickVerdict {
   title: string;
@@ -203,7 +223,7 @@ export type VibecheckResponse =
     }
   | {
       mode: "recommendations";
-      detectedIntentLabel: string;
+      detectedIntent: DetectedIntent;
       locationCandidate: string;
       candidates: RankedCandidate[];
       sourceLabel: string;

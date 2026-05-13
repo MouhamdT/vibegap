@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const ranked = rankCandidatesByIntent(candidates, intent);
     return NextResponse.json({
       mode: "recommendations",
-      detectedIntentLabel: intent.label,
+      detectedIntent: intent,
       locationCandidate: classification.locationCandidate,
       candidates: ranked.slice(0, 6),
       sourceLabel: "Google Places data · Google review signals if available · Mock social signals",

@@ -14,7 +14,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function isRecommendationsPayload(value: unknown): value is Extract<VibecheckResponse, { mode: "recommendations" }> {
   if (!isRecord(value)) return false;
   if (value.mode !== "recommendations") return false;
-  if (typeof value.detectedIntentLabel !== "string") return false;
+  if (!isRecord(value.detectedIntent)) return false;
+  if (typeof value.detectedIntent.label !== "string") return false;
+  if (typeof value.detectedIntent.kind !== "string") return false;
   if (typeof value.locationCandidate !== "string") return false;
   if (!Array.isArray(value.candidates)) return false;
   if (typeof value.sourceLabel !== "string") return false;
@@ -116,7 +118,7 @@ function isSingleReportPayload(value: unknown): value is Extract<VibecheckRespon
 export function VibeGapApp() {
   const [report, setReport] = useState<VibeReportModel | null>(null);
   const [recommendations, setRecommendations] = useState<{
-    detectedIntentLabel: string;
+    detectedIntent: Extract<VibecheckResponse, { mode: "recommendations" }>["detectedIntent"];
     locationCandidate: string;
     candidates: RankedCandidate[];
     sourceLabel: string;
@@ -164,7 +166,7 @@ export function VibeGapApp() {
 
       if (isRecommendationsPayload(raw)) {
         setRecommendations({
-          detectedIntentLabel: raw.detectedIntentLabel,
+          detectedIntent: raw.detectedIntent,
           locationCandidate: raw.locationCandidate,
           candidates: raw.candidates as RankedCandidate[],
           sourceLabel: raw.sourceLabel,
@@ -234,7 +236,7 @@ export function VibeGapApp() {
           </div>
         ) : recommendations ? (
           <CandidateResults
-            detectedIntentLabel={recommendations.detectedIntentLabel}
+            detectedIntent={recommendations.detectedIntent}
             locationCandidate={recommendations.locationCandidate}
             candidates={recommendations.candidates}
             sourceLabel={recommendations.sourceLabel}
