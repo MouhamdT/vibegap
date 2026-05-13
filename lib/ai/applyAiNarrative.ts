@@ -4,7 +4,8 @@ import { generateNarrativeWithOpenAI } from "@/lib/ai/openaiNarrativeProvider";
 import { mergeNarrativePatch } from "@/lib/ai/narrativeShared";
 
 function normalizeAiProvider(): "openai" | "gemini" | null {
-  const v = process.env.AI_PROVIDER?.trim().toLowerCase();
+  const raw = process.env["AI_PROVIDER"];
+  const v = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   if (v === "openai" || v === "gemini") return v;
   return null;
 }
@@ -38,7 +39,7 @@ export async function applyAiNarrativeToReport(report: VibeReport): Promise<Vibe
       }
       return merged;
     }
-    return report;
+    return { ...report, narrativeSource: "rules", aiNarrativeUsed: false };
   }
 
   if (provider === "openai") {
@@ -50,7 +51,7 @@ export async function applyAiNarrativeToReport(report: VibeReport): Promise<Vibe
       }
       return merged;
     }
-    return report;
+    return { ...report, narrativeSource: "rules", aiNarrativeUsed: false };
   }
 
   return report;

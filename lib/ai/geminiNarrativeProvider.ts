@@ -8,11 +8,11 @@ import {
 } from "@/lib/ai/narrativeShared";
 
 const LOG = "[Gemini narrative]";
-const DEFAULT_MODEL = "gemini-2.0-flash";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 const GEMINI_API_ROOT = "https://generativelanguage.googleapis.com/v1beta";
 
 function readGeminiApiKey(): string | null {
-  const raw = process.env.GEMINI_API_KEY ?? process.env["GEMINI_API_KEY"];
+  const raw = process.env["GEMINI_API_KEY"];
   if (typeof raw !== "string") return null;
   const stripped = raw.replace(/^\uFEFF/, "").trim();
   return stripped.length > 0 ? stripped : null;
@@ -35,6 +35,10 @@ function extractGeminiAssistantText(raw: unknown): string | null {
   }
   const c0 = candidates[0];
   if (!isRecord(c0)) return null;
+  const finishReason = c0.finishReason;
+  if (typeof finishReason === "string" && finishReason !== "STOP") {
+    console.warn(`${LOG} candidate finishReason: ${finishReason}`);
+  }
   const content = c0.content;
   if (!isRecord(content)) {
     console.warn(`${LOG} candidate.content missing.`);
@@ -45,14 +49,23 @@ function extractGeminiAssistantText(raw: unknown): string | null {
     console.warn(`${LOG} candidate content.parts missing or empty.`);
     return null;
   }
-  const p0 = parts[0];
-  if (!isRecord(p0)) return null;
-  const text = p0.text;
-  if (typeof text !== "string" || !text.trim()) {
-    console.warn(`${LOG} first part had no text.`);
+  const texts: string[] = [];
+  for (const part of parts) {
+    if (!isRecord(part)) continue;
+    const text = part.text;
+    if (typeof text === "string" && text.trim()) texts.push(text.trim());
+  }
+  if (texts.length === 0) {
+    console.warn(`${LOG} no text parts in candidate content.`);
     return null;
   }
-  return text;
+  return texts.join("\n");
+}
+
+function safeHttpErrorSummary(status: number, bodySnippet: string): string {
+  const s = bodySnippet.replace(/\s+/g, " ").trim().slice(0, 200);
+  if (!s) return String(status);
+  return `${status} ${s}`;
 }
 
 /**
@@ -61,7 +74,9 @@ function extractGeminiAssistantText(raw: unknown): string | null {
 export async function generateNarrativeWithGemini(report: VibeReport): Promise<Partial<VibeReport> | null> {
   const apiKey = readGeminiApiKey();
   const keyPresent = Boolean(apiKey);
-  console.warn(`${LOG} API key present: ${keyPresent}`);
+  const aiProviderRaw = process.env["AI_PROVIDER"];
+  console.warn(`${LOG} GEMINI_API_KEY present: ${keyPresent}`);
+  console.warn(`${LOG} AI_PROVIDER: ${typeof aiProviderRaw === "string" ? aiProviderRaw.trim() || "(empty)" : "(unset)"}`);
 
   if (!apiKey) {
     console.warn(`${LOG} fallback: missing API key`);
@@ -70,7 +85,8 @@ export async function generateNarrativeWithGemini(report: VibeReport): Promise<P
 
   console.warn(`${LOG} starting`);
 
-  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  const modelOverride = process.env["GEMINI_MODEL"];
+  const model = typeof modelOverride === "string" && modelOverride.trim() ? modelOverride.trim() : DEFAULT_MODEL;
   const payload = buildNarrativeModelInput(report);
   const userText = `${NARRATIVE_USER_INSTRUCTION}\n\nINPUT_JSON:\n${JSON.stringify(payload)}`;
 
@@ -95,10 +111,8 @@ export async function generateNarrativeWithGemini(report: VibeReport): Promise<P
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      const snippet = errBody.slice(0, 280).replace(/\s+/g, " ").trim();
-      console.warn(
-        `${LOG} fallback: request failed: HTTP ${res.status}${snippet ? ` — ${snippet}` : ""}`,
-      );
+      const snippet = errBody.slice(0, 280);
+      console.warn(`${LOG} fallback: request failed: ${safeHttpErrorSummary(res.status, snippet)}`);
       return null;
     }
 

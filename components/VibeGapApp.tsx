@@ -87,7 +87,6 @@ export function VibeGapApp() {
 
   useEffect(() => {
     if (!loading) return;
-    setStepId("1");
     let current = 1;
     const id = window.setInterval(() => {
       if (current >= 4) return;
@@ -98,6 +97,7 @@ export function VibeGapApp() {
   }, [loading]);
 
   const onSearch = useCallback(async (query: string) => {
+    setStepId("1");
     setLoading(true);
     setPipelineStatus("loading");
     setError(null);

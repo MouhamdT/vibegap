@@ -1,6 +1,6 @@
 import { applyAiNarrativeToReport } from "@/lib/ai/applyAiNarrative";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
@@ -9,6 +9,13 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  await connection();
+
+  const aiProviderRaw = process.env["AI_PROVIDER"];
+  if (typeof aiProviderRaw === "string" && aiProviderRaw.trim().toLowerCase() === "gemini") {
+    console.warn("[vibecheck] AI_PROVIDER is gemini — invoking Gemini narrative provider.");
+  }
+
   let body: unknown;
   try {
     body = await request.json();

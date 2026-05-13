@@ -50,16 +50,17 @@ Rules (must follow):
 - Social signals in this product are always mocked for the prototype: mention that once in quickVerdictSummary or finalRecommendation when natural (short clause).
 - If placeDataSource is "google", you may say place details / review signals come from Google Places; if "mock", say place/review context is illustrative mock data. Never claim real TikTok or Instagram scraping.
 - Be concise and scannable. Write for someone who wants a quick decision.
+- Output must be JSON only: an object with exactly these keys and no others: quickVerdictTitle, quickVerdictSummary, topReasons, bestFor, avoidIf, finalRecommendation.
 - Return a single JSON object only (no markdown fences, no commentary).`;
 
-export const NARRATIVE_USER_INSTRUCTION = `Return JSON with exactly these string array keys and string keys:
+export const NARRATIVE_USER_INSTRUCTION = `Return JSON with exactly these keys (no extra keys):
 {
   "quickVerdictTitle": string,
   "quickVerdictSummary": string,
   "topReasons": [string, string, string],
-  "finalRecommendation": string,
   "bestFor": string[],
-  "avoidIf": string[]
+  "avoidIf": string[],
+  "finalRecommendation": string
 }
 
 Polish the tone of the existing rule-based content; stay faithful to the same meaning and constraints. bestFor and avoidIf should be the same count or fewer items than the rule lists unless the rule lists are empty — prefer 3–6 short chips each.`;
@@ -113,8 +114,16 @@ export function buildNarrativeModelInput(report: VibeReport): NarrativeModelInpu
 
 export function extractJsonText(raw: string): string {
   const t = raw.trim();
-  const fence = t.match(/^```(?:json)?\s*([\s\S]*?)```$/i);
-  return fence ? fence[1]!.trim() : t;
+  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence?.[1]) {
+    return fence[1].trim();
+  }
+  const firstBrace = t.indexOf("{");
+  const lastBrace = t.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    return t.slice(firstBrace, lastBrace + 1).trim();
+  }
+  return t;
 }
 
 function isTrimmedNonEmptyString(v: unknown): v is string {
@@ -142,9 +151,10 @@ export type ParsedNarrative = {
 
 /** Parse and validate assistant JSON. `logPrefix` e.g. "[Gemini narrative]" or "[VibeGap] OpenAI narrative". */
 export function parseNarrativeAssistantJson(content: string, logPrefix: string): ParsedNarrative | null {
+  const stripped = extractJsonText(content);
   let parsed: unknown;
   try {
-    parsed = JSON.parse(extractJsonText(content));
+    parsed = JSON.parse(stripped);
   } catch {
     console.warn(`${logPrefix} fallback: invalid JSON`);
     return null;
