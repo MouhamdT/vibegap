@@ -2,9 +2,10 @@ import type { RankedCandidate } from "@/lib/types/vibecheck";
 
 type CandidateCardProps = {
   candidate: RankedCandidate;
+  rank: number;
 };
 
-export function CandidateCard({ candidate }: CandidateCardProps) {
+export function CandidateCard({ candidate, rank }: CandidateCardProps) {
   const tone =
     candidate.decision.label === "GO"
       ? "border-emerald-200/80 bg-emerald-50/60 text-emerald-900"
@@ -19,7 +20,7 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
           {candidate.decision.label}
         </span>
         <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[11px] font-medium text-stone-700">
-          Confidence: {candidate.decision.confidence}
+          Signal confidence: {candidate.decision.confidence}
         </span>
         <span className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[11px] font-medium text-stone-700">
           Fit: {candidate.fitScore}
@@ -36,6 +37,10 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
 
       <p className="mt-3 text-sm leading-relaxed text-stone-700">{candidate.oneSentenceReason}</p>
       <p className="mt-2 text-xs leading-relaxed text-stone-500">
+        <span className="font-medium text-stone-700">Why ranked #{rank}:</span>{" "}
+        {candidate.rankReason.replace(/^Why ranked #\d+:\s*/i, "")}
+      </p>
+      <p className="mt-2 text-xs leading-relaxed text-stone-500">
         <span className="font-medium text-stone-700">Main risk:</span> {candidate.mainRisk}
       </p>
       <p className="mt-1 text-xs leading-relaxed text-stone-500">
@@ -48,6 +53,23 @@ export function CandidateCard({ candidate }: CandidateCardProps) {
         Google Places data · {candidate.place.hasRealGoogleReviews ? "Google review signals" : "limited review signals"} ·
         {" "}Mock social signals
       </p>
+
+      <details className="mt-3 rounded-xl border border-stone-200/80 bg-stone-50/40 p-3">
+        <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-wider text-stone-500">
+          Score breakdown
+        </summary>
+        <div className="mt-2 space-y-2">
+          {candidate.scoreBreakdown.map((row) => (
+            <div key={row.label} className="rounded-lg border border-stone-200 bg-white p-2">
+              <div className="flex items-center justify-between text-xs text-stone-600">
+                <span>{row.label}</span>
+                <span className="font-medium text-stone-900">{row.score}</span>
+              </div>
+              <p className="mt-1 text-[11px] leading-relaxed text-stone-500">{row.explanation}</p>
+            </div>
+          ))}
+        </div>
+      </details>
 
       <button
         type="button"

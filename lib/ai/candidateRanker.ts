@@ -44,6 +44,12 @@ type CandidateSignals = {
   valueComplaints?: boolean;
 };
 
+type BreakdownRow = {
+  label: string;
+  score: number;
+  explanation: string;
+};
+
 function rankForIntent(place: PlaceData, intentKind: UserIntentKind): {
   fitScore: number;
   signals: CandidateSignals;
@@ -221,16 +227,161 @@ export function rankCandidatesByIntent(candidates: PlaceData[], intent: Detected
         : label;
     const confidence: RankedCandidate["decision"]["confidence"] =
       place.hasRealGoogleReviews ? "High" : place.dataSource === "google" ? "Medium" : "Low";
+
+    const confidenceScore = confidence === "High" ? 85 : confidence === "Medium" ? 65 : 38;
+    const reviewStrength = clamp(Math.round(Math.min(place.reviewCount / 20, 60) + place.averageRating * 8), 10, 95);
+    const riskPenalty = clamp(100 - analysis.fitScore, 5, 95);
+
+    const scoreBreakdown: BreakdownRow[] =
+      intent.kind === "study_work" || intent.kind === "quiet_calm"
+        ? [
+            {
+              label: "Goal fit",
+              score: clamp((analysis.signals.quiet ? 82 : 58) + (isStudyPlaceType(place) ? 10 : 0), 0, 100),
+              explanation: isStudyPlaceType(place)
+                ? "Bookshop/library/work-friendly context supports focused visits."
+                : "General venue context has moderate study alignment.",
+            },
+            {
+              label: "Noise/crowding risk",
+              score: clamp(100 - (analysis.signals.noisy ? 52 : 28) - (analysis.signals.waitHeavy ? 14 : 0), 0, 100),
+              explanation: analysis.signals.noisy
+                ? "Reviews mention crowd or noise pressure in busier windows."
+                : "No strong noise warning in the current review signals.",
+            },
+            {
+              label: "Review strength",
+              score: reviewStrength,
+              explanation: `Based on rating (${place.averageRating.toFixed(1)}) and review coverage (${place.reviewCount.toLocaleString()}).`,
+            },
+            {
+              label: "Price/access",
+              score: clamp(78 - place.priceLevel * 8 - (analysis.signals.waitHeavy ? 8 : 0), 0, 100),
+              explanation: "Reflects practical access factors like wait friction and price pressure.",
+            },
+            {
+              label: "Signal confidence",
+              score: confidenceScore,
+              explanation: "Higher when Google review signals are available and stronger.",
+            },
+          ]
+        : intent.kind === "budget_eats" || intent.kind === "budget_celebration"
+          ? [
+              {
+                label: "Budget/value fit",
+                score: clamp(82 - place.priceLevel * 14 + (analysis.signals.value ? 10 : 0) - (analysis.signals.pricey ? 18 : 0), 0, 100),
+                explanation: "Combines price level with value-related review signals.",
+              },
+              {
+                label: "Group fit",
+                score: clamp(74 - (analysis.signals.waitHeavy ? 16 : 0), 0, 100),
+                explanation: "Birthday/group usability drops when reservation or wait pressure appears.",
+              },
+              {
+                label: "Wait/reservation risk",
+                score: clamp(100 - (analysis.signals.waitHeavy ? 58 : 26), 0, 100),
+                explanation: analysis.signals.waitHeavy
+                  ? "Line or reservation friction is visible in review signals."
+                  : "No strong queue friction signal in current reviews.",
+              },
+              {
+                label: "Review strength",
+                score: reviewStrength,
+                explanation: `Based on rating (${place.averageRating.toFixed(1)}) and review coverage (${place.reviewCount.toLocaleString()}).`,
+              },
+              {
+                label: "Signal confidence",
+                score: confidenceScore,
+                explanation: "Higher when Google review signals are available and stronger.",
+              },
+            ]
+          : intent.kind === "luxury" || intent.kind === "date_night"
+            ? [
+                {
+                  label: "Occasion fit",
+                  score: clamp((analysis.signals.upscale || analysis.signals.cozy ? 82 : 60) - (analysis.signals.rushed ? 16 : 0), 0, 100),
+                  explanation: "Measures upscale/date suitability against pacing mismatch risk.",
+                },
+                {
+                  label: "Ambience/reputation",
+                  score: clamp(68 + (analysis.signals.cozy ? 14 : 0) + Math.round(place.averageRating * 4), 0, 100),
+                  explanation: "Uses ambience cues plus rating reputation.",
+                },
+                {
+                  label: "Reservation risk",
+                  score: clamp(100 - (analysis.signals.waitHeavy ? 55 : 25), 0, 100),
+                  explanation: analysis.signals.waitHeavy
+                    ? "Reservation or queue pressure may impact occasion flow."
+                    : "Reservation pressure appears moderate in the current snapshot.",
+                },
+                {
+                  label: "Review strength",
+                  score: reviewStrength,
+                  explanation: `Based on rating (${place.averageRating.toFixed(1)}) and review coverage (${place.reviewCount.toLocaleString()}).`,
+                },
+                {
+                  label: "Signal confidence",
+                  score: confidenceScore,
+                  explanation: "Higher when Google review signals are available and stronger.",
+                },
+              ]
+            : [
+                {
+                  label: "Goal fit",
+                  score: analysis.fitScore,
+                  explanation: "Overall deterministic fit against the detected intent.",
+                },
+                {
+                  label: "Risk profile",
+                  score: 100 - riskPenalty,
+                  explanation: "Lower when review-side risks dominate.",
+                },
+                {
+                  label: "Review strength",
+                  score: reviewStrength,
+                  explanation: `Based on rating (${place.averageRating.toFixed(1)}) and review coverage (${place.reviewCount.toLocaleString()}).`,
+                },
+                {
+                  label: "Signal confidence",
+                  score: confidenceScore,
+                  explanation: "Higher when Google review signals are available and stronger.",
+                },
+              ];
+
+    let scoreDriver = "Balanced fit profile";
+    if (intent.kind === "study_work" || intent.kind === "quiet_calm") {
+      scoreDriver = isStudyPlaceType(place) ? "Study-friendly context" : analysis.signals.noisy ? "Noise/crowding drag" : "Workable calm signal";
+    } else if (intent.kind === "budget_eats" || intent.kind === "budget_celebration") {
+      scoreDriver = analysis.signals.pricey ? "Price mismatch risk" : "Better value fit";
+    } else if (intent.kind === "luxury" || intent.kind === "date_night") {
+      scoreDriver = analysis.signals.cozy || analysis.signals.upscale ? "Stronger ambience signal" : "Occasion uncertainty";
+    } else if (intent.kind === "party_nightlife") {
+      scoreDriver = analysis.signals.lively ? "Higher energy alignment" : "Lower nightlife signal";
+    } else if (intent.kind === "low_wait") {
+      scoreDriver = analysis.signals.waitHeavy ? "Queue friction risk" : "Lower reservation risk";
+    }
+
     return {
       place,
       decision: { label: adjustedLabel, confidence },
       fitScore: analysis.fitScore,
       oneSentenceReason: buildDecisionAwareReason(adjustedLabel, intent.kind, place, analysis.signals),
+      rankReason: "",
+      scoreDriver,
       mainRisk: analysis.mainRisk,
       bestFor: analysis.bestFor,
       avoidIf: analysis.avoidIf,
+      scoreBreakdown,
     };
   });
-
-  return ranked.sort((a, b) => b.fitScore - a.fitScore).slice(0, 6);
+  const sorted = ranked.sort((a, b) => b.fitScore - a.fitScore).slice(0, 6);
+  return sorted.map((candidate, index, list) => {
+    const next = list[index + 1];
+    const delta = next ? candidate.fitScore - next.fitScore : candidate.fitScore;
+    const rankReason =
+      index === 0
+        ? `Why ranked #1: ${candidate.scoreDriver}${delta > 0 ? ` and a ${delta}-point lead over the next option.` : "."}`
+        : `Why ranked #${index + 1}: ${candidate.scoreDriver}${delta < 0 ? " with weaker overall fit than higher-ranked options." : "."}`;
+    return { ...candidate, rankReason };
+  });
 }

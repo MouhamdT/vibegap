@@ -18,7 +18,8 @@ export function CandidateComparisonTable({ candidates }: CandidateComparisonTabl
               <th className="py-2 pr-3 font-medium">Place</th>
               <th className="py-2 pr-3 font-medium">Decision</th>
               <th className="py-2 pr-3 font-medium">Fit</th>
-              <th className="py-2 pr-3 font-medium">Confidence</th>
+              <th className="py-2 pr-3 font-medium">Signal confidence</th>
+              <th className="py-2 pr-3 font-medium">Score driver</th>
               <th className="py-2 pr-3 font-medium">Main risk</th>
               <th className="py-2 font-medium">Best for</th>
             </tr>
@@ -31,6 +32,7 @@ export function CandidateComparisonTable({ candidates }: CandidateComparisonTabl
                 <td className="py-2 pr-3">{candidate.decision.label}</td>
                 <td className="py-2 pr-3 font-medium text-stone-900">{candidate.fitScore}</td>
                 <td className="py-2 pr-3">{candidate.decision.confidence}</td>
+                <td className="py-2 pr-3">{candidate.scoreDriver}</td>
                 <td className="py-2 pr-3">{candidate.mainRisk}</td>
                 <td className="py-2">{candidate.bestFor}</td>
               </tr>

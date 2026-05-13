@@ -38,8 +38,8 @@ export function CandidateResults({
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {candidates.map((c) => (
-            <CandidateCard key={c.place.id} candidate={c} />
+          {candidates.map((c, idx) => (
+            <CandidateCard key={c.place.id} candidate={c} rank={idx + 1} />
           ))}
         </div>
       )}

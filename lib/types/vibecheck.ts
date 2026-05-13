@@ -38,9 +38,16 @@ export interface RankedCandidate {
   decision: CandidateDecision;
   fitScore: number;
   oneSentenceReason: string;
+  rankReason: string;
+  scoreDriver: string;
   mainRisk: string;
   bestFor: string;
   avoidIf: string;
+  scoreBreakdown: {
+    label: string;
+    score: number;
+    explanation: string;
+  }[];
 }
 
 export interface RecommendationScoringWeight {
@@ -61,6 +68,7 @@ export interface RecommendationInsights {
     maybe: number;
     skip: number;
   };
+  whyRankedFirstBullets: string[];
 }
 
 /** Short, user-facing summary shown above the fold (V2.2). */

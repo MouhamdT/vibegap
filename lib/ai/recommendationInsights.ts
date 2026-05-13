@@ -142,5 +142,18 @@ export function buildRecommendationInsights(
     confidenceNote,
     scoringWeights: weightsForIntent(detectedIntent),
     decisionCounts: { go, maybe, skip },
+    whyRankedFirstBullets: top
+      ? [
+          `Strongest driver: ${top.scoreDriver}.`,
+          `Main risk to watch: ${top.mainRisk}.`,
+          candidates[1]
+            ? `Beats the next option by ${top.fitScore - candidates[1].fitScore} fit points in this scoring model.`
+            : "No close second candidate was available in this run.",
+        ]
+      : [
+          "No ranked candidate available.",
+          "Risk and fit trade-offs could not be compared.",
+          "Try refining the location or query wording.",
+        ],
   };
 }

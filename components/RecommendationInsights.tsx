@@ -15,6 +15,18 @@ export function RecommendationInsights({ insights }: RecommendationInsightsProps
         <p className="mt-2 text-sm leading-relaxed text-stone-700">{insights.topPickReason}</p>
       </div>
 
+      <div className="rounded-xl border border-stone-200 bg-stone-50/40 p-3">
+        <p className="text-[11px] uppercase tracking-wider text-stone-500">Why this ranked first</p>
+        <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-stone-700">
+          {insights.whyRankedFirstBullets.map((line) => (
+            <li key={line} className="flex gap-2">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" />
+              <span>{line}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="grid gap-3 md:grid-cols-3">
         <div className="rounded-xl border border-stone-200 bg-stone-50/40 p-3">
           <p className="text-[11px] uppercase tracking-wider text-stone-500">Main trade-off</p>
