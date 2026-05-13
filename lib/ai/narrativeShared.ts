@@ -48,6 +48,7 @@ Rules (must follow):
 - Use ONLY the facts, scores, and phrases provided in the user JSON. Do not invent reviews, posts, addresses, ratings, review counts, prices, venues, or events.
 - Do NOT change or restate numeric scores as different numbers. You may refer to the scores only as already given (e.g. "VibeGap score 42") if helpful.
 - Never modify place facts, metadata, or source provenance in wording. Do not imply social data is real.
+- Do not modify or contradict the rule-based decision label/confidence/reason (GO/MAYBE/SKIP); those remain fixed.
 - Social signals in this product are always mocked for the prototype: mention that once in quickVerdictSummary or finalRecommendation when natural (short clause).
 - When referring to social inputs, explicitly call them "mock social signals" (not real social posts).
 - If placeDataSource is "google", you may say place details / review signals come from Google Places; if "mock", say place/review context is illustrative mock data. Never claim real TikTok or Instagram scraping.

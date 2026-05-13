@@ -3,6 +3,7 @@ import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
 import { getMockSocialContentMode, getMockSocialForPlace } from "@/lib/social/mockSocialProvider";
 import type {
+  DecisionSummary,
   DetectedIntent,
   PlaceData,
   QueryMode,
@@ -33,6 +34,8 @@ function resolveReportIntent(searchQuery: string, classification: { queryMode: Q
 
 function formatPlaceIntentGoalDisplay(goalFragment: string, intent: DetectedIntent): string {
   switch (intent.kind) {
+    case "low_wait":
+      return "Low-wait visit";
     case "quiet_calm":
       return "Quiet visit";
     case "study_work":
@@ -132,6 +135,11 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
 
   const socialSummary = summarizeSocialHype(socialHighlights, mismatch.socialMode);
   const realitySummary = buildRealitySummary(place);
+  const decision = buildDecisionSummary({
+    score,
+    intent: detectedIntent,
+    place,
+  });
   const { bestFor, avoidIf } = deriveTags(place, score, detectedIntent);
   const recommendation = buildRecommendation(
     vibeGapScore,
@@ -157,6 +165,7 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
     realitySummary,
     score,
     detectedIntent,
+    decision,
     quickVerdict,
     bestFor,
     avoidIf,
@@ -172,7 +181,24 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
 // ---------------------------------------------------------------------------
 
 const INTENT_KEYWORDS: Record<UserIntentKind, readonly string[]> = {
-  study_work: ["study", "studying", "laptop", "wifi", "work", "homework", "focus", "reading"],
+  study_work: ["study", "studying", "laptop", "wifi", "work", "homework", "focus", "reading", "to study"],
+  low_wait: [
+    "no waiting line",
+    "no waiting time",
+    "no wait",
+    "low wait",
+    "short wait",
+    "no line",
+    "no queue",
+    "without waiting",
+    "not crowded",
+    "avoid line",
+    "avoid queue",
+    "reservation easy",
+    "walk in",
+    "walk-in",
+    "quick seating",
+  ],
   date_night: ["date", "romantic", "anniversary", "proposal", "couples"],
   budget_celebration: [
     "cheap",
@@ -184,9 +210,17 @@ const INTENT_KEYWORDS: Record<UserIntentKind, readonly string[]> = {
     "resturant",
     "dinner",
   ],
-  budget_eats: ["cheap", "budget", "affordable", "inexpensive", "deal", "value"],
+  budget_eats: ["cheap", "budget", "affordable", "inexpensive", "deal", "value", "vegan", "vegetarian"],
   luxury: ["luxury", "splurge", "fancy", "special", "tasting", "celebration", "upscale"],
-  quiet_calm: ["quiet", "calm", "peaceful", "chill", "low key", "low-key", "serene"],
+  quiet_calm: [
+    "quiet",
+    "calm",
+    "peaceful",
+    "chill",
+    "low key",
+    "low-key",
+    "serene",
+  ],
   party_nightlife: ["party", "nightlife", "dancing", "dj", "club", "drinks", "shots", "turn up"],
   family: ["family", "kids", "children", "toddler", "stroller", "baby"],
   venue_lookup: [],
@@ -245,7 +279,7 @@ function matchBudgetCelebrationQuery(query: string): { matched: boolean; signals
  * Reads the raw query and returns a single primary intent.
  * Venue-style names without goal words resolve to `venue_lookup` (neutral intent).
  */
-function detectIntentFromQuery(rawQuery: string): DetectedIntent {
+export function detectIntentFromQuery(rawQuery: string): DetectedIntent {
   const query = rawQuery.trim().toLowerCase();
   if (!query) {
     return {
@@ -253,6 +287,22 @@ function detectIntentFromQuery(rawQuery: string): DetectedIntent {
       label: "Venue lookup",
       confidence: "low",
       matchedSignals: [],
+    };
+  }
+
+  const lowWaitHits = collectHits(query, INTENT_KEYWORDS.low_wait);
+  if (
+    lowWaitHits.length > 0 ||
+    /\b(no waiting (line|time)|no wait|low wait|short wait|no line|no queue|without waiting|not crowded|avoid (line|queue)|reservation easy|walk-?in)\b/.test(
+      query,
+    )
+  ) {
+    const signals = [...new Set(lowWaitHits)].slice(0, 6);
+    return {
+      kind: "low_wait",
+      label: "Low-wait visit",
+      confidence: signals.length >= 2 ? "high" : "medium",
+      matchedSignals: signals.length > 0 ? signals : ["low wait"],
     };
   }
 
@@ -552,6 +602,107 @@ function verdictForVibeGap(vibeGapScore: number): string {
 const INTENT_HIGH_MIN = 60;
 const INTENT_LOW_MAX = 47;
 
+function repeatedReviewThemeCount(place: PlaceData): number {
+  return place.reviewThemes.filter((t) => t.strength >= 58).length;
+}
+
+function buildDecisionConfidence(place: PlaceData, intent: DetectedIntent): DecisionSummary["confidence"] {
+  const hasGoal = intent.kind !== "venue_lookup";
+  const hasGooglePlace = place.dataSource === "google" && Boolean(place.isRealPlaceData);
+  const hasGoogleReviews = usesGoogleReviewSignals(place);
+  const repeatedThemes = repeatedReviewThemeCount(place);
+
+  if (hasGooglePlace && hasGoogleReviews && repeatedThemes >= 2 && hasGoal) return "High";
+  if (hasGooglePlace && hasGoogleReviews) return "Medium";
+  return "Low";
+}
+
+function confidenceReason(place: PlaceData, confidence: DecisionSummary["confidence"], hasGoal: boolean): string {
+  if (confidence === "High") {
+    return "Based on a matched Google place and repeated Google review themes.";
+  }
+  if (confidence === "Medium") {
+    return hasGoal
+      ? "Based on Google place data and limited review signals; social comparison uses mock social signals."
+      : "Based on Google place data and limited review signals; no clear goal was parsed and social comparison uses mock social signals.";
+  }
+  if (place.dataSource === "google" && !usesGoogleReviewSignals(place)) {
+    return "Based on Google place data with mock review signals; social comparison uses mock social signals.";
+  }
+  return "Based on illustrative mock data, not a confirmed real venue.";
+}
+
+function buildDecisionSummary(input: {
+  score: VibeGapScore;
+  intent: DetectedIntent;
+  place: PlaceData;
+}): DecisionSummary {
+  const { score, intent, place } = input;
+  const confidence = buildDecisionConfidence(place, intent);
+  const hasGoal = intent.kind !== "venue_lookup";
+  const studyGoal = intent.kind === "study_work" || intent.kind === "quiet_calm";
+  const budgetGoal = intent.kind === "budget_eats" || intent.kind === "budget_celebration";
+  const lowWaitGoal = intent.kind === "low_wait";
+
+  const majorRiskHigh =
+    score.waitRiskScore >= 70 || score.priceRealityScore >= 70 || score.laptopFriendlyScore <= 28;
+
+  let label: DecisionSummary["label"];
+  let decisionLine: string;
+
+  if (
+    score.intentFitScore < 35 ||
+    (studyGoal && score.laptopFriendlyScore < 35) ||
+    (budgetGoal && score.priceRealityScore >= 70) ||
+    (lowWaitGoal && score.waitRiskScore >= 72)
+  ) {
+    label = "SKIP";
+    decisionLine = "Poor fit for your stated goal based on review and vibe signals.";
+  } else if (
+    score.intentFitScore >= 70 &&
+    score.vibeGapScore < 60 &&
+    !majorRiskHigh &&
+    confidence !== "Low"
+  ) {
+    label = "GO";
+    decisionLine = "Good fit for your goal, with no major review warnings.";
+  } else {
+    label = "MAYBE";
+    decisionLine = lowWaitGoal
+      ? "Worth considering, but reviews suggest line or reservation friction."
+      : "Worth considering, but reviews suggest waits, noise, or price risk.";
+  }
+
+  if (lowWaitGoal && score.waitRiskScore >= 64 && label === "GO") {
+    label = "MAYBE";
+    decisionLine = "Better if you can book ahead or arrive off-peak.";
+  }
+
+  if (!hasGoal) {
+    if (score.vibeGapScore >= 70) {
+      label = "MAYBE";
+      decisionLine = "Mixed signal check for this venue lookup; review and vibe alignment is not strong enough to commit.";
+    } else if (label === "GO" && (score.vibeGapScore >= 45 || score.waitRiskScore >= 60 || score.priceRealityScore >= 60)) {
+      label = "MAYBE";
+      decisionLine = "Venue lookup looks workable, but risk signals suggest caution before committing.";
+    }
+  }
+
+  if (
+    label === "MAYBE" &&
+    score.intentFitScore >= 70 &&
+    score.vibeGapScore < 60 &&
+    score.waitRiskScore < 65 &&
+    confidence !== "Low"
+  ) {
+    label = "GO";
+    decisionLine = "Good fit for your goal, with no major review warnings.";
+  }
+
+  const reason = `${decisionLine} ${confidenceReason(place, confidence, hasGoal)}`;
+  return { label, confidence, reason };
+}
+
 type QuickVerdictInput = {
   place: PlaceData;
   score: VibeGapScore;
@@ -795,6 +946,16 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
         : "Illustrative review signals mention noise, seating pressure, or waits, which can clash with focused work.";
     }
   }
+  if (kind === "low_wait") {
+    if (/\b(wait|line|queue|reservation|packed|crowd|busy|slow seating)\b/i.test(reviewBlob)) {
+      return gRev
+        ? "Google review signals mention line or reservation friction, which is risky for a no-wait visit."
+        : "Illustrative review signals mention line or reservation friction, which is risky for a no-wait visit.";
+    }
+    return gRev
+      ? "Available Google review signals suggest a more manageable queue profile off-peak."
+      : "In this illustrative mock set, queue signals look more manageable off-peak.";
+  }
   if (concern) {
     return `Review themes repeatedly point to ${concern}.`;
   }
@@ -802,6 +963,12 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
 }
 
 function socialLineForEvidence(kind: UserIntentKind, mismatch: MismatchSignals, socialBlob: string): string {
+  if (kind === "low_wait") {
+    if (/\b(wait|line|queue|packed|crowd|reservation)\b/i.test(socialBlob)) {
+      return "Mock social signals still show peak-time crowd cues, so no-wait expectations may be fragile.";
+    }
+    return "Mock social signals imply easier access, but review-side queue signals should drive the decision.";
+  }
   if (kind === "party_nightlife") {
     if (mismatch.socialMode === "lively") {
       return "Mock social signals skew DJ-forward and high-energy, with packed-room cues in this sample.";
@@ -843,6 +1010,16 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
     return gRev
       ? "Music, crowd energy, and weekend pacing in reviews line up with a nightlife-forward night in the available Google review signals."
       : "Music, crowd energy, and weekend pacing in reviews line up with a nightlife-forward night in this mock draw.";
+  }
+
+  if (kind === "low_wait") {
+    if (score.waitRiskScore >= 68) {
+      return "Wait-risk is high in current signals — likely MAYBE or SKIP unless your timing is flexible.";
+    }
+    if (score.waitRiskScore >= 52) {
+      return "Queue risk is moderate; better if you can book ahead or arrive off-peak.";
+    }
+    return "Queue and reservation pressure look relatively controlled in this snapshot.";
   }
 
   if (kind === "budget_celebration" || kind === "budget_eats") {
@@ -942,6 +1119,40 @@ function computeIntentFitScore(
       bullets: [
         "Intent Fit stays near the midpoint for venue-style queries (no study, budget, party, or similar keywords).",
         `The report still compares social tone to reviews for “${place.name}” — add goal words (e.g. “quiet study”, “cheap eats”) to score intent more sharply.`,
+      ],
+    };
+  }
+
+  if (intent.kind === "low_wait") {
+    const reviewWaitHeavy =
+      /\b(wait|line|queue|reservation|packed|crowd|busy|slow seating|slow service)\b/i.test(reviewBlob);
+    const reviewEasyAccess =
+      /\b(no wait|short wait|quick seating|easy reservation|walk-?in|off-peak)\b/i.test(reviewBlob);
+    const socialWaitHeavy = /\b(wait|line|queue|reservation|packed|crowd|busy)\b/i.test(socialBlob);
+
+    let scoreW = 70;
+    if (reviewWaitHeavy) scoreW -= 36;
+    if (socialWaitHeavy) scoreW -= 10;
+    if (reviewEasyAccess) scoreW += 12;
+    if (place.reviewCount > 1200 && reviewWaitHeavy) scoreW -= 8;
+    scoreW = clamp(scoreW, 10, 90);
+
+    return {
+      score: scoreW,
+      verdict:
+        scoreW < 38
+          ? "Risky for a no-wait visit."
+          : scoreW < 62
+            ? "Possible for a low-wait visit, but timing risk is visible."
+            : "Reasonable fit for a low-wait visit if you time it well.",
+      bullets: [
+        `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 5).join(", ")}).`,
+        reviewWaitHeavy
+          ? "Review signals repeatedly mention lines, reservation friction, crowding, or slow seating."
+          : "Review signals show fewer hard queue warnings in this snapshot.",
+        reviewEasyAccess
+          ? "Some reviews mention walk-ins, quick seating, or easier off-peak access."
+          : "Better if you can book ahead or arrive off-peak.",
       ],
     };
   }
@@ -1358,6 +1569,20 @@ function deriveTags(
     if (score.laptopFriendlyScore < 45) {
       avoidIf.push("All-day laptop sessions when reviews flag turnover or tight tables");
     }
+    return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
+  }
+
+  if (intent.kind === "low_wait") {
+    const bestFor: string[] = [
+      "Visits where you can book ahead or choose off-peak arrival windows",
+      "Flexible plans that can shift 15-30 minutes if the first wave is crowded",
+    ];
+    if (score.waitRiskScore < 50) bestFor.push("Quick meals when timing reliability matters");
+    const avoidIf: string[] = [
+      "Rigid schedules with zero buffer for line or seating delays",
+      "Walk-in plans during peak dinner rush without a backup",
+    ];
+    if (score.waitRiskScore >= 65) avoidIf.push("No-wait expectations when reviews repeatedly mention line friction");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
   }
 

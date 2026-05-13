@@ -3,15 +3,37 @@
 import { useCallback, useEffect, useState } from "react";
 import { ProcessingSteps } from "@/components/ProcessingSteps";
 import { SearchBar } from "@/components/SearchBar";
+import { CandidateResults } from "@/components/CandidateResults";
 import { VibeReport } from "@/components/VibeReport";
-import type { VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
+import type { RankedCandidate, VibeReport as VibeReportModel, VibecheckResponse } from "@/lib/types/vibecheck";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isVibeReportPayload(value: unknown): value is { report: VibeReportModel } {
+function isRecommendationsPayload(value: unknown): value is Extract<VibecheckResponse, { mode: "recommendations" }> {
+  if (!isRecord(value)) return false;
+  if (value.mode !== "recommendations") return false;
+  if (typeof value.detectedIntentLabel !== "string") return false;
+  if (typeof value.locationCandidate !== "string") return false;
+  if (!Array.isArray(value.candidates)) return false;
+  if (typeof value.sourceLabel !== "string") return false;
+  return true;
+}
+
+function isNeedsLocationPayload(value: unknown): value is Extract<VibecheckResponse, { mode: "needs_location" }> {
+  if (!isRecord(value)) return false;
+  if (value.mode !== "needs_location") return false;
+  if (typeof value.detectedIntentLabel !== "string") return false;
+  if (value.locationCandidate !== null) return false;
+  if (!Array.isArray(value.candidates)) return false;
+  if (typeof value.recoveryMessage !== "string") return false;
+  return true;
+}
+
+function isSingleReportPayload(value: unknown): value is Extract<VibecheckResponse, { mode: "single_report" }> {
   if (!isRecord(value) || !("report" in value)) return false;
+  if (value.mode !== "single_report") return false;
   const reportUnknown = value.report;
   if (!isRecord(reportUnknown)) return false;
 
@@ -60,6 +82,19 @@ function isVibeReportPayload(value: unknown): value is { report: VibeReportModel
 
   if (!Array.isArray(reportUnknown.socialHighlights)) return false;
 
+  if (!isRecord(reportUnknown.decision)) return false;
+  if (reportUnknown.decision.label !== "GO" && reportUnknown.decision.label !== "MAYBE" && reportUnknown.decision.label !== "SKIP") {
+    return false;
+  }
+  if (
+    reportUnknown.decision.confidence !== "High" &&
+    reportUnknown.decision.confidence !== "Medium" &&
+    reportUnknown.decision.confidence !== "Low"
+  ) {
+    return false;
+  }
+  if (typeof reportUnknown.decision.reason !== "string") return false;
+
   if (!isRecord(reportUnknown.quickVerdict)) return false;
   if (typeof reportUnknown.quickVerdict.title !== "string") return false;
   if (typeof reportUnknown.quickVerdict.explanation !== "string") return false;
@@ -80,6 +115,13 @@ function isVibeReportPayload(value: unknown): value is { report: VibeReportModel
 
 export function VibeGapApp() {
   const [report, setReport] = useState<VibeReportModel | null>(null);
+  const [recommendations, setRecommendations] = useState<{
+    detectedIntentLabel: string;
+    locationCandidate: string;
+    candidates: RankedCandidate[];
+    sourceLabel: string;
+  } | null>(null);
+  const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [stepId, setStepId] = useState("1");
@@ -101,6 +143,8 @@ export function VibeGapApp() {
     setLoading(true);
     setPipelineStatus("loading");
     setError(null);
+    setRecommendations(null);
+    setRecoveryMessage(null);
     try {
       const res = await fetch("/api/vibecheck", {
         method: "POST",
@@ -118,13 +162,37 @@ export function VibeGapApp() {
         return;
       }
 
-      if (!isVibeReportPayload(raw)) {
+      if (isRecommendationsPayload(raw)) {
+        setRecommendations({
+          detectedIntentLabel: raw.detectedIntentLabel,
+          locationCandidate: raw.locationCandidate,
+          candidates: raw.candidates as RankedCandidate[],
+          sourceLabel: raw.sourceLabel,
+        });
+        setReport(null);
+        setPipelineStatus("success");
+        setStepId("4");
+        return;
+      }
+
+      if (isNeedsLocationPayload(raw)) {
+        setReport(null);
+        setRecommendations(null);
+        setRecoveryMessage(raw.recoveryMessage);
+        setPipelineStatus("success");
+        setStepId("4");
+        return;
+      }
+
+      if (!isSingleReportPayload(raw)) {
         setError("Unable to parse the server response.");
         setPipelineStatus("idle");
         return;
       }
 
       setReport(raw.report);
+      setRecommendations(null);
+      setRecoveryMessage(null);
       setPipelineStatus("success");
       setStepId("4");
     } catch {
@@ -160,7 +228,20 @@ export function VibeGapApp() {
       ) : null}
 
       <div className="rounded-3xl border border-stone-200/80 bg-white/90 p-6 shadow-sm sm:p-10">
-        <VibeReport report={report} />
+        {recoveryMessage ? (
+          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 px-6 py-12 text-center">
+            <p className="text-sm text-stone-700">{recoveryMessage}</p>
+          </div>
+        ) : recommendations ? (
+          <CandidateResults
+            detectedIntentLabel={recommendations.detectedIntentLabel}
+            locationCandidate={recommendations.locationCandidate}
+            candidates={recommendations.candidates}
+            sourceLabel={recommendations.sourceLabel}
+          />
+        ) : (
+          <VibeReport report={report} />
+        )}
       </div>
     </div>
   );

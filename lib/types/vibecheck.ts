@@ -19,6 +19,30 @@ export interface Recommendation {
   body: string;
 }
 
+export type DecisionLabel = "GO" | "MAYBE" | "SKIP";
+export type DecisionConfidence = "High" | "Medium" | "Low";
+
+export interface DecisionSummary {
+  label: DecisionLabel;
+  confidence: DecisionConfidence;
+  reason: string;
+}
+
+export interface CandidateDecision {
+  label: DecisionLabel;
+  confidence: DecisionConfidence;
+}
+
+export interface RankedCandidate {
+  place: PlaceData;
+  decision: CandidateDecision;
+  fitScore: number;
+  oneSentenceReason: string;
+  mainRisk: string;
+  bestFor: string;
+  avoidIf: string;
+}
+
 /** Short, user-facing summary shown above the fold (V2.2). */
 export interface QuickVerdict {
   title: string;
@@ -71,6 +95,7 @@ export interface SocialPost {
 /** What the user appears to be optimizing for, inferred from the search string only. */
 export type UserIntentKind =
   | "study_work"
+  | "low_wait"
   | "date_night"
   | "budget_celebration"
   | "budget_eats"
@@ -158,6 +183,8 @@ export interface VibeReport {
   /** Inferred visit goal from the raw search query (mock heuristic). */
   detectedIntent: DetectedIntent;
   /** Fast read: verdict, scores, reasons, tags — before full analysis. */
+  decision: DecisionSummary;
+  /** Fast read: verdict, scores, reasons, tags — before full analysis. */
   quickVerdict: QuickVerdict;
   bestFor: string[];
   avoidIf: string[];
@@ -168,3 +195,25 @@ export interface VibeReport {
   /** True when an LLM successfully supplied polished copy merged into this report. */
   aiNarrativeUsed: boolean;
 }
+
+export type VibecheckResponse =
+  | {
+      mode: "single_report";
+      report: VibeReport;
+    }
+  | {
+      mode: "recommendations";
+      detectedIntentLabel: string;
+      locationCandidate: string;
+      candidates: RankedCandidate[];
+      sourceLabel: string;
+      recoveryMessage: null;
+    }
+  | {
+      mode: "needs_location";
+      detectedIntentLabel: string;
+      locationCandidate: null;
+      candidates: [];
+      sourceLabel: "Illustrative mock place data · Mock social signals";
+      recoveryMessage: string;
+    };

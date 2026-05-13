@@ -1,5 +1,9 @@
 import { applyAiNarrativeToReport } from "@/lib/ai/applyAiNarrative";
+import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
+import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
+import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
+import { getGoogleCandidatePlaces } from "@/lib/places/googleCandidateSearchProvider";
 import { connection, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -41,8 +45,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
   }
 
+  const intent = detectIntentFromQuery(query);
+  const classification = classifyQueryMode(query, intent);
+
+  if (classification.queryMode === "goal_search" && classification.recommendationMode && classification.locationCandidate) {
+    const candidates = await getGoogleCandidatePlaces(query, classification.locationCandidate);
+    const ranked = rankCandidatesByIntent(candidates, intent);
+    return NextResponse.json({
+      mode: "recommendations",
+      detectedIntentLabel: intent.label,
+      locationCandidate: classification.locationCandidate,
+      candidates: ranked.slice(0, 6),
+      sourceLabel: "Google Places data · Google review signals if available · Mock social signals",
+      recoveryMessage: null,
+    });
+  }
+
+  if (classification.queryMode === "goal_search" && !classification.recommendationMode) {
+    return NextResponse.json({
+      mode: "needs_location",
+      detectedIntentLabel: intent.label,
+      locationCandidate: null,
+      candidates: [],
+      sourceLabel: "Illustrative mock place data · Mock social signals",
+      recoveryMessage: "Add a city or neighborhood so I can suggest real places. Try: quiet place to study in Copenhagen",
+    });
+  }
+
   const report = await buildMockVibeReport(query);
   const finalReport = await applyAiNarrativeToReport(report);
 
-  return NextResponse.json({ report: finalReport });
+  return NextResponse.json({ mode: "single_report", report: finalReport });
 }

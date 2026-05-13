@@ -11,7 +11,91 @@ export type QueryClassification = {
   queryExplanation: string;
   /** One-line banner for the report header. */
   queryContextBanner: string;
+  /** Parsed location hint for recommendation mode goal searches, e.g. "Copenhagen". */
+  locationCandidate: string | null;
+  /** True when goal_search has a location and should return ranked candidate places. */
+  recommendationMode: boolean;
 };
+
+const GOAL_SIGNAL_TOKENS = new Set([
+  "study",
+  "studying",
+  "quiet",
+  "calm",
+  "laptop",
+  "work",
+  "cheap",
+  "budget",
+  "birthday",
+  "dinner",
+  "romantic",
+  "date",
+  "party",
+  "nightlife",
+  "vegan",
+  "vegetarian",
+  "wait",
+  "waiting",
+  "line",
+  "crowded",
+]);
+
+const LOCATION_STOPWORDS = new Set([
+  "to",
+  "for",
+  "having",
+  "a",
+  "an",
+  "the",
+  "and",
+  "with",
+  "without",
+  "no",
+  "not",
+  "low",
+  "near",
+  "around",
+  "in",
+  "place",
+  "restaurant",
+  "cafe",
+  "bar",
+]);
+
+function normalizeToken(t: string): string {
+  return t.toLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, "");
+}
+
+function extractTrailingLocationCandidate(raw: string): string | null {
+  const words = raw.split(/\s+/).map((w) => w.trim()).filter(Boolean);
+  if (words.length < 2) return null;
+  const lowered = words.map((w) => normalizeToken(w));
+
+  // Require a goal signal somewhere before the guessed suffix.
+  const hasGoalSignal = lowered.some((w) => GOAL_SIGNAL_TOKENS.has(w));
+  if (!hasGoalSignal) return null;
+
+  for (let size = Math.min(3, words.length - 1); size >= 1; size--) {
+    const suffixWords = words.slice(words.length - size);
+    const suffixNorm = suffixWords.map((w) => normalizeToken(w));
+    if (suffixNorm.some((w) => !w || LOCATION_STOPWORDS.has(w) || GOAL_SIGNAL_TOKENS.has(w))) continue;
+    if (suffixNorm.some((w) => w.length < 2)) continue;
+
+    const candidate = suffixWords.join(" ").replace(/\s+/g, " ").trim();
+    if (candidate.length < 2) continue;
+    return formatSearchQueryForDisplay(candidate);
+  }
+  return null;
+}
+
+function extractLocationCandidate(raw: string): string | null {
+  const m = raw.match(/\b(?:in|near|around)\s+([A-Za-z][A-Za-z\s'-]{1,48})$/i);
+  if (m?.[1]) {
+    const loc = m[1].trim().replace(/\s+/g, " ");
+    if (loc.length >= 2) return formatSearchQueryForDisplay(loc);
+  }
+  return extractTrailingLocationCandidate(raw);
+}
 
 const GENERIC_GOAL_PLACE_PREFIX =
   /^(a\s+|the\s+|some\s+|any\s+)?(quiet\s+|good\s+|nice\s+)?place(s)?(\s+to)?$/i;
@@ -32,7 +116,7 @@ function looksLikeVenueCandidate(before: string): boolean {
 /** True when the text after "for …" reads like a visit goal, not boilerplate like "rent". */
 function hasGoalTailSignals(after: string): boolean {
   const t = after.toLowerCase();
-  return /\b(stud(y|ying|ies)|laptop|wifi|work|homework|party|nightlife|celebrate|celebration|birthday|anniversary|cheap|budget|affordable|value|date|romantic|proposal|family|kids|children|quiet|calm|focus|reading|toast|occasion|gathering|dinner|brunch|lunch|studying)\b/.test(
+  return /\b(stud(y|ying|ies)|laptop|wifi|work|homework|party|nightlife|celebrate|celebration|birthday|anniversary|cheap|budget|affordable|value|date|romantic|proposal|family|kids|children|quiet|calm|focus|reading|toast|occasion|gathering|dinner|brunch|lunch|vegan|vegetarian|wait(ing)?|queue|line|crowded|no waiting time|no waiting line|low wait|no line|not crowded)\b/.test(
     t,
   );
 }
@@ -117,6 +201,22 @@ const GOAL_TAIL_TOKEN_BLOCKLIST = new Set([
   "gathering",
   "occasion",
   "nightlife",
+  "vegan",
+  "vegetarian",
+  "waiting",
+  "wait",
+  "queue",
+  "line",
+  "crowded",
+  "to",
+  "for",
+  "having",
+  "no",
+  "not",
+  "low",
+  "a",
+  "an",
+  "the",
 ]);
 
 function venuePrefixEndsWithGoalToken(left: string): boolean {
@@ -150,6 +250,8 @@ function tryTrailingPlaceWithIntent(raw: string): QueryClassification | null {
         queryExplanation:
           "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; VibeGap still compares mock social signals to review data for the matched place.",
         queryContextBanner: "Checking this place against your goal.",
+        locationCandidate: null,
+        recommendationMode: false,
       };
     }
   }
@@ -175,6 +277,8 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
         queryExplanation:
           "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; VibeGap compares mock social signals to review data for that named pick.",
         queryContextBanner: "Checking this place against your goal.",
+        locationCandidate: null,
+        recommendationMode: false,
       };
     }
   }
@@ -183,6 +287,7 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
   if (trailing) return trailing;
 
   if (intent.kind !== "venue_lookup") {
+    const locationCandidate = extractLocationCandidate(raw);
     return {
       queryMode: "goal_search",
       placeNameCandidate: null,
@@ -190,6 +295,8 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
       queryExplanation:
         "We read this as a goal-style search. Intent Fit is the lead signal; VibeGap adds how social and reviews line up on an illustrative mock venue.",
       queryContextBanner: "Checking fit for your goal.",
+      locationCandidate,
+      recommendationMode: Boolean(locationCandidate),
     };
   }
 
@@ -200,5 +307,7 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
     queryExplanation:
       "We read this as a named venue. VibeGap is the headline read (social vs reviews); Intent Fit stays neutral unless goal words show up in the text.",
     queryContextBanner: "Checking this specific place.",
+    locationCandidate: null,
+    recommendationMode: false,
   };
 }

@@ -31,13 +31,13 @@ export default function Home() {
         </div>
 
         <p className="mx-auto mt-20 max-w-lg text-center text-sm text-stone-500">
-          All venues, posts, and scores are illustrative. There is no live data, authentication, or database in
-          this build.
+          Google Places data is live when available. Social signals are mocked in this prototype. Mock fallback
+          queries use illustrative data.
         </p>
       </main>
 
       <footer className="border-t border-stone-200/60 py-8 text-center text-xs text-stone-400">
-        Illustrative dataset only · No live TikTok, Instagram, or Google Places data
+        Google Places live when available · Mock social signals only · No live TikTok/Instagram scraping
       </footer>
     </div>
   );

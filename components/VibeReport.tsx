@@ -99,6 +99,35 @@ function QuickVerdictCard({ report }: { report: VibeReportModel }) {
   );
 }
 
+function DecisionSummaryCard({ report }: { report: VibeReportModel }) {
+  const decisionTone =
+    report.decision.label === "GO"
+      ? "border-emerald-200/80 bg-emerald-50/60 text-emerald-900"
+      : report.decision.label === "SKIP"
+        ? "border-rose-200/80 bg-rose-50/60 text-rose-900"
+        : "border-amber-200/80 bg-amber-50/60 text-amber-900";
+
+  return (
+    <section
+      className="rounded-3xl border border-stone-200/90 bg-white p-6 shadow-sm sm:p-8"
+      aria-labelledby="decision-summary-heading"
+    >
+      <p id="decision-summary-heading" className="text-[11px] font-medium uppercase tracking-[0.18em] text-stone-500">
+        Decision summary
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold tracking-wide ${decisionTone}`}>
+          Decision: {report.decision.label}
+        </span>
+        <span className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-700">
+          Confidence: {report.decision.confidence}
+        </span>
+      </div>
+      <p className="mt-4 max-w-3xl text-sm leading-relaxed text-stone-700">{report.decision.reason}</p>
+    </section>
+  );
+}
+
 export function VibeReport({ report }: VibeReportProps) {
   if (!report) {
     return (
@@ -179,6 +208,8 @@ export function VibeReport({ report }: VibeReportProps) {
           {new Date(report.generatedAt).toLocaleString()}
         </p>
       </header>
+
+      <DecisionSummaryCard report={report} />
 
       <QuickVerdictCard report={report} />
 
