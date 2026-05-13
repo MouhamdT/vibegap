@@ -49,6 +49,8 @@ export interface PlaceData {
   googlePlaceId?: string;
   /** True when name/address/reviews come from Google Places (still paired with mock social). */
   isRealPlaceData?: boolean;
+  /** True when we successfully extracted signals from real Google review text. */
+  hasRealGoogleReviews?: boolean;
 }
 
 export type SocialSource = "tiktok" | "instagram" | "youtube";

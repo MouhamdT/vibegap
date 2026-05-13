@@ -112,8 +112,12 @@ export function VibeReport({ report }: VibeReportProps) {
   }
 
   const { score, detectedIntent } = report;
-  const placeSourceLabel =
-    report.place.dataSource === "google" ? "Google Places data" : "Illustrative mock place data";
+  const sourceLabel =
+    report.place.dataSource === "google"
+      ? report.place.hasRealGoogleReviews
+        ? "Google Places data · Google review signals · Mock social signals"
+        : "Google Places data · Mock review signals · Mock social signals"
+      : "Illustrative mock place data · Mock social signals";
   const placeNameForRow =
     report.placeNameCandidate !== null && report.placeNameCandidate !== ""
       ? formatSearchQueryForDisplay(report.placeNameCandidate)
@@ -170,9 +174,7 @@ export function VibeReport({ report }: VibeReportProps) {
           )}
         </p>
         <p className="text-xs text-stone-400 tabular-nums">
-          <span className="text-stone-500">{placeSourceLabel}</span>
-          {" · "}
-          <span className="text-stone-500">Mock social signals</span>
+          <span className="text-stone-500">{sourceLabel}</span>
           {" · "}
           {new Date(report.generatedAt).toLocaleString()}
         </p>
