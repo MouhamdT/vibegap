@@ -64,12 +64,19 @@ export async function POST(request: Request) {
   }
 
   if (classification.queryMode === "goal_search" && classification.recommendationMode && classification.locationCandidate) {
+    const rankIntent = classification.recommendationRankIntent ?? intent;
     const candidates = await getGoogleCandidatePlaces(query, classification.locationCandidate);
-    const ranked = rankCandidatesByIntent(candidates, intent);
+    const ranked = rankCandidatesByIntent(candidates, rankIntent);
+    const nearAnchor = classification.recommendationNearAnchorName;
+    const anchorNote = nearAnchor
+      ? `Using ${nearAnchor} as the area anchor.`
+      : `Searching in ${classification.locationCandidate}.`;
     return NextResponse.json({
       mode: "recommendations",
-      detectedIntent: intent,
+      detectedIntent: rankIntent,
       locationCandidate: classification.locationCandidate,
+      nearAnchorName: nearAnchor,
+      anchorNote,
       candidates: ranked.slice(0, 6),
       sourceLabel: "Google Places · Google review signals when available · Illustrative prototype social signal",
       recoveryMessage: null,
