@@ -109,14 +109,27 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
     bestFor = "Focused work blocks with some tolerance for bustle";
     avoidIf = "Need guaranteed silence without timing around peaks";
   } else if (intentKind === "budget_eats" || intentKind === "budget_celebration") {
+    const upscaleBudgetBlend = intent.matchedSignals.some((s) => /\bupscale|budget-aware\b/i.test(s));
     signals.value = riskFromBlob(blob, /\bvalue|affordable|good price|worth\b/i);
     signals.pricey = riskFromBlob(blob, /\boverpriced|expensive|pricey|not worth\b/i) || place.priceLevel >= 3;
     signals.waitHeavy = riskFromBlob(blob, /\bwait|line|queue|reservation\b/i);
-    if (signals.value) score += 14;
-    if (signals.pricey) score -= 26;
+    if (signals.value) score += upscaleBudgetBlend ? 18 : 14;
+    if (signals.pricey) score -= upscaleBudgetBlend ? 18 : 26;
     if (signals.waitHeavy) score -= 8;
-    mainRisk = signals.pricey ? "Price mismatch vs. expectations" : signals.waitHeavy ? "Reservation or wait timing" : "Group timing on celebration nights";
-    bestFor = "Budget-conscious meals with flexible arrival";
+    mainRisk = signals.pricey
+      ? upscaleBudgetBlend
+        ? "Balancing premium atmosphere with value expectations"
+        : "Price mismatch vs. expectations"
+      : signals.waitHeavy
+        ? "Reservation or wait timing"
+        : intentKind === "budget_celebration"
+          ? "Group timing on celebration nights"
+          : upscaleBudgetBlend
+            ? "Balancing atmosphere goals with budget practicality"
+            : "Peak-hour seating variability";
+    bestFor = upscaleBudgetBlend
+      ? "Plans that want occasion polish without overspending"
+      : "Budget-conscious meals with flexible arrival";
     avoidIf = "Strict per-person spend caps with zero buffer";
   } else if (intentKind === "date_night") {
     signals.cozy = riskFromBlob(blob, /\bcozy|romantic|ambience|atmosphere|design|service\b/i);

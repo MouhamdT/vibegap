@@ -32,11 +32,11 @@ export function RecommendationRankedShortlist({
   onSelectPlace,
   desktopSplit,
 }: RecommendationRankedShortlistProps) {
-  const activeRowRef = useRef<HTMLDivElement | null>(null);
+  const inlinePanelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!selectedPlaceId || desktopSplit) return;
-    activeRowRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    inlinePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedPlaceId, desktopSplit]);
 
   return (
@@ -49,7 +49,6 @@ export function RecommendationRankedShortlist({
         return (
           <div
             key={c.place.id}
-            ref={showInlinePanel ? activeRowRef : undefined}
             role="listitem"
             className={`overflow-hidden rounded-lg border transition-colors ${
               isSelected
@@ -100,12 +99,14 @@ export function RecommendationRankedShortlist({
             </button>
 
             {showInlinePanel ? (
-              <RecommendationDrillDownPanel
-                candidate={c}
-                rank={rank}
-                variant="inline"
-                onClose={() => onSelectPlace(null)}
-              />
+              <div ref={inlinePanelRef}>
+                <RecommendationDrillDownPanel
+                  candidate={c}
+                  rank={rank}
+                  variant="inline"
+                  onClose={() => onSelectPlace(null)}
+                />
+              </div>
             ) : null}
           </div>
         );

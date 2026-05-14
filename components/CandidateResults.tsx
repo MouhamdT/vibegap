@@ -37,11 +37,11 @@ export function CandidateResults({
   const selectedRank = selectedCandidate ? candidates.indexOf(selectedCandidate) + 1 : 0;
 
   return (
-    <section className="space-y-4" aria-label="Recommended places">
-      <header className="space-y-2 border-b border-stone-200/50 pb-4">
+    <section className="space-y-3" aria-label="Recommended places">
+      <header className="space-y-1.5 border-b border-stone-200/50 pb-3">
         <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">Recommendation mode</p>
         <h2 className="text-balance text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">
-          Best matches for {detectedIntent.label.toLowerCase()}
+          Best matches for {detectedIntent.label}
           {nearAnchorName ? ` near ${nearAnchorName}` : ` in ${locationCandidate}`}
         </h2>
         {anchorNote ? (
@@ -53,14 +53,20 @@ export function CandidateResults({
       <RecommendationInsights insights={insights} />
 
       {candidates.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-stone-200/80 bg-[#faf9f7] px-5 py-10 text-center">
-          <p className="text-sm leading-relaxed text-stone-600">
-            No strong candidates were returned for this search. Try a nearby neighborhood or slightly broader wording.
+        <div className="rounded-lg border border-dashed border-stone-200/80 bg-[#faf9f7] px-4 py-8 text-left sm:px-6 sm:py-9">
+          <p className="text-sm font-medium leading-relaxed text-stone-800">
+            I couldn&apos;t find a confident match. Try adding a city, neighborhood, or landmark.
           </p>
+          <p className="mt-3 text-[12px] leading-relaxed text-stone-600">Examples:</p>
+          <ul className="mt-2 list-inside list-disc space-y-1 text-[12px] leading-relaxed text-stone-600">
+            <li>brunch near Trevi Fountain</li>
+            <li>quiet cafe in Copenhagen</li>
+            <li>cheap birthday dinner London</li>
+          </ul>
         </div>
       ) : (
-        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-6">
-          <div className="min-w-0 space-y-2">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:items-start lg:gap-5">
+          <div className="min-w-0 space-y-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Ranked shortlist</p>
             <RecommendationRankedShortlist
               candidates={candidates}
@@ -72,7 +78,7 @@ export function CandidateResults({
 
           {isDesktop && selectedCandidate ? (
             <aside
-              className="sticky top-4 max-h-[min(88vh,calc(100vh-5rem))] min-h-[12rem] min-w-0 overflow-y-auto lg:mt-0"
+              className="sticky top-3 max-h-[min(86vh,calc(100vh-4.5rem))] min-h-[10rem] min-w-0 overflow-y-auto lg:mt-0"
               aria-label="Selected place analysis"
             >
               <RecommendationDrillDownPanel candidate={selectedCandidate} rank={selectedRank} variant="sidebar" />

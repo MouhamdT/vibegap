@@ -3,7 +3,7 @@
 export const EXAMPLE_SEARCH_QUERIES: readonly string[] = [
   "quiet place to study in Tel Aviv",
   "cheap birthday dinner London",
-  "Piccolo Buco Rome no waiting time",
+  "brunch near Trevi Fountain",
 ] as const;
 
 export type ExampleSearchChipsProps = {
@@ -15,7 +15,7 @@ export function ExampleSearchChips({ disabled = false, onSelect }: ExampleSearch
   return (
     <div className="w-full max-w-xl sm:max-w-2xl">
       <p className="text-center text-[10px] font-medium uppercase tracking-[0.16em] text-stone-400 sm:text-left">
-        Try one
+        Examples
       </p>
       <ul className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start" aria-label="Example searches">
         {EXAMPLE_SEARCH_QUERIES.map((q) => (

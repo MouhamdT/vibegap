@@ -1,5 +1,5 @@
 import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
-import { hasGoalTailSignals, type QueryClassification } from "@/lib/ai/queryMode";
+import { hasGoalTailSignals, inferRecommendationIntentFromGoalSpan, type QueryClassification } from "@/lib/ai/queryMode";
 import { resolveReportIntent } from "@/lib/ai/truthEngine";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { getGoogleCandidatePlaces } from "@/lib/places/googleCandidateSearchProvider";
@@ -90,17 +90,8 @@ export function buildLandmarkNearbyTextQuery(intentGoalText: string, anchorDispl
 }
 
 function diningIntentFromGoalFragment(goalText: string): DetectedIntent | null {
-  const t = goalText.toLowerCase();
-  if (/\bbrunch\b/.test(t)) {
-    return { kind: "budget_eats", label: "Brunch", confidence: "medium", matchedSignals: ["brunch"] };
-  }
-  if (/\b(lunch|dinner|breakfast|supper)\b/.test(t)) {
-    return { kind: "budget_eats", label: "Dining", confidence: "medium", matchedSignals: ["meal"] };
-  }
-  if (/\b(coffee|espresso)\b/.test(t)) {
-    return { kind: "budget_eats", label: "Coffee", confidence: "medium", matchedSignals: ["coffee"] };
-  }
-  return null;
+  const inferred = inferRecommendationIntentFromGoalSpan(goalText);
+  return inferred.kind === "venue_lookup" ? null : inferred;
 }
 
 export type LandmarkRecommendationResult = {

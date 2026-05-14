@@ -12,18 +12,18 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col px-4 pb-14 pt-7 sm:px-6 sm:pb-16 sm:pt-9">
+      <main className="flex flex-1 flex-col px-4 pb-12 pt-8 sm:px-6 sm:pb-14 sm:pt-10">
         <div className="mx-auto w-full max-w-6xl">
           <VibeGapApp />
         </div>
 
         <section
-          className="mx-auto mt-12 w-full max-w-xl rounded-lg border border-stone-200/50 bg-white/60 px-4 py-4 text-center sm:mt-16 sm:px-5"
+          className="mx-auto mt-10 w-full max-w-xl rounded-lg border border-stone-200/40 bg-white/50 px-4 py-3.5 text-center sm:mt-12 sm:px-5"
           aria-label="Data honesty"
         >
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-stone-400">Data honesty</p>
           <p className="mt-2 text-[11px] leading-relaxed text-stone-600 sm:text-xs">
-            Uses Google Places and available review signals. Social comparison is illustrative in this prototype.
+            Uses Google Places and available review signals. Social comparison is illustrative.
           </p>
         </section>
       </main>

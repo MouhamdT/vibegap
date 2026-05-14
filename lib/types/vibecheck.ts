@@ -256,6 +256,6 @@ export type VibecheckResponse =
       detectedIntentLabel: string;
       locationCandidate: null;
       candidates: [];
-      sourceLabel: "Illustrative mock place data · Mock social signals";
+      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.";
       recoveryMessage: string;
     };

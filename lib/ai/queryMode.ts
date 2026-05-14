@@ -28,7 +28,31 @@ export type QueryClassification = {
 };
 
 const RECOMMENDATION_CATEGORY_RE =
-  /\b(brunch|breakfast|lunch|dinner|supper|coffee|espresso|cafe|café|restaurant|foods?|pizza|burger|sushi|tacos|dessert|drinks|cheap|budget|affordable|value|birthday|date|romantic|fancy|upscale|special\s+occasion|group|party|quiet|study|studying|work|laptop|focused|reading|no\s+wait|no\s+waiting|no\s+line|low\s+wait|quick|fast|vegan|vegetarian|halal|gluten\s*-?\s*free|place\s+to)\b/i;
+  /\b(brunch|breakfast|lunch|dinner|supper|coffee|espresso|cafe|café|restaurant|foods?|pizza|burger|sushi|tacos|dessert|drinks|cheap|budget|affordable|value|birthday|date|romantic|fancy|upscale|special\s+occasion|group|party|quiet|study|studying|work|laptop|focused|reading|no\s+wait|no\s+waiting|no\s+line|low\s+wait|quick|fast|vegan|vegetarian|halal|gluten\s*-?\s*free|place\s+to|michelin(\s+stars?)?|fine\s+dining|tasting\s+menu)\b/i;
+
+/** Fixes common typos before routing heuristics run. */
+export function normalizeRoutingTypos(text: string): string {
+  return text
+    .replace(/\bmichlen\b/gi, "michelin")
+    .replace(/\bmichelen\b/gi, "michelin")
+    .replace(/\bresturant\b/gi, "restaurant");
+}
+
+/**
+ * Splits a trailing "but …" off a captured location/anchor span so goals like
+ * "fancy restaurant in rome but cheap" do not treat "Rome But Cheap" as the place name.
+ */
+function stripButClauseFromLocation(locationRaw: string): { locationCore: string; trailingModifier: string } {
+  const trimmed = locationRaw.trim();
+  const m = trimmed.match(/^(.+?)\s+but\s+(.+)$/i);
+  if (m?.[1] && m[2]) {
+    const trailing = m[2].trim();
+    if (trailing.length >= 2) {
+      return { locationCore: m[1].trim(), trailingModifier: trailing };
+    }
+  }
+  return { locationCore: trimmed, trailingModifier: "" };
+}
 
 function hasRecommendationCategorySignals(text: string): boolean {
   return RECOMMENDATION_CATEGORY_RE.test(text.trim());
@@ -157,8 +181,8 @@ const IMPLICIT_ONE_WORD_CITIES = new Set([
   "rotterdam",
 ]);
 
-function inferRecommendationIntentFromGoalSpan(goalLeft: string): DetectedIntent {
-  const query = goalLeft.trim().toLowerCase();
+export function inferRecommendationIntentFromGoalSpan(goalLeft: string): DetectedIntent {
+  const query = normalizeRoutingTypos(goalLeft).trim().toLowerCase();
   if (!query) {
     return {
       kind: "venue_lookup",
@@ -167,6 +191,12 @@ function inferRecommendationIntentFromGoalSpan(goalLeft: string): DetectedIntent
       matchedSignals: [],
     };
   }
+
+  const hasUpscaleCue =
+    /\bmichelin(\s+stars?)?\b|\bfine\s+dining\b|\btasting\s+menu\b|\b(fancy|upscale|splurge|special\s+occasion|luxury)\b/.test(
+      query,
+    );
+  const hasBudgetCue = /\b(cheap|budget|affordable|inexpensive|value)\b/.test(query);
 
   if (
     /\b(no waiting (line|time)|no wait|low wait|short wait|no line|no queue|without waiting|not crowded|quick|fast)\b/.test(
@@ -212,6 +242,24 @@ function inferRecommendationIntentFromGoalSpan(goalLeft: string): DetectedIntent
     };
   }
 
+  if (hasUpscaleCue && hasBudgetCue) {
+    return {
+      kind: "budget_eats",
+      label: "Upscale but budget-aware restaurants",
+      confidence: "high",
+      matchedSignals: ["upscale", "budget-aware"],
+    };
+  }
+
+  if (/\bmichelin(\s+stars?)?\b|\bfine\s+dining\b|\btasting\s+menu\b/.test(query)) {
+    return {
+      kind: "luxury",
+      label: "Michelin-style or fine-dining visit",
+      confidence: "high",
+      matchedSignals: ["michelin", "fine dining"],
+    };
+  }
+
   if (/\b(fancy|upscale|splurge|special\s+occasion|tasting|luxury)\b/.test(query)) {
     return {
       kind: "luxury",
@@ -221,10 +269,9 @@ function inferRecommendationIntentFromGoalSpan(goalLeft: string): DetectedIntent
     };
   }
 
-  const hasBudget = /\b(cheap|budget|affordable|inexpensive|deal|value)\b/.test(query);
   const hasOccasion = /\b(birthday|anniversary|celebration|occasion|gathering|celebrate)\b/.test(query);
   const hasFood = /\b(restaurant|dinner|brunch|lunch|eatery|bistro|cafe|food)\b/.test(query);
-  if (hasBudget && (hasOccasion || (hasFood && hasOccasion))) {
+  if (hasBudgetCue && (hasOccasion || (hasFood && hasOccasion))) {
     return {
       kind: "budget_celebration",
       label: "Budget-friendly celebration meal",
@@ -288,8 +335,8 @@ function inferRecommendationIntentFromGoalSpan(goalLeft: string): DetectedIntent
   };
 }
 
-function tryImplicitTrailingCityRecommendation(raw: string): QueryClassification | null {
-  const words = raw.trim().split(/\s+/).filter(Boolean);
+function tryImplicitTrailingCityRecommendation(normalizedQuery: string): QueryClassification | null {
+  const words = normalizedQuery.split(/\s+/).filter(Boolean);
   if (words.length < 2) return null;
 
   const lower = words.map((w) => w.toLowerCase().replace(/^[^a-z]+|[^a-z]+$/g, ""));
@@ -318,8 +365,12 @@ function tryImplicitTrailingCityRecommendation(raw: string): QueryClassification
   if (goalLeft.length < 2) return null;
   if (!hasRecommendationCategorySignals(goalLeft)) return null;
 
-  const locationCandidate = formatSearchQueryForDisplay(locationRaw);
-  const rankIntent = inferRecommendationIntentFromGoalSpan(goalLeft);
+  const { locationCore, trailingModifier } = stripButClauseFromLocation(locationRaw);
+  if (locationCore.length < 2) return null;
+
+  const goalForInfer = trailingModifier ? `${goalLeft} but ${trailingModifier}` : goalLeft;
+  const locationCandidate = formatSearchQueryForDisplay(locationCore);
+  const rankIntent = inferRecommendationIntentFromGoalSpan(goalForInfer);
 
   return {
     queryMode: "goal_search",
@@ -335,13 +386,17 @@ function tryImplicitTrailingCityRecommendation(raw: string): QueryClassification
   };
 }
 
-function tryPrepStructuredRecommendation(raw: string): QueryClassification | null {
-  const split = splitPrepGoalAndLocation(raw);
+function tryPrepStructuredRecommendation(normalizedQuery: string): QueryClassification | null {
+  const split = splitPrepGoalAndLocation(normalizedQuery);
   if (!split) return null;
   if (!hasRecommendationCategorySignals(split.goalLeft)) return null;
 
-  const locationCandidate = formatSearchQueryForDisplay(split.locationRaw);
-  const rankIntent = inferRecommendationIntentFromGoalSpan(split.goalLeft);
+  const { locationCore, trailingModifier } = stripButClauseFromLocation(split.locationRaw);
+  if (locationCore.length < 2) return null;
+
+  const goalForInfer = trailingModifier ? `${split.goalLeft} but ${trailingModifier}` : split.goalLeft;
+  const locationCandidate = formatSearchQueryForDisplay(locationCore);
+  const rankIntent = inferRecommendationIntentFromGoalSpan(goalForInfer);
   const nearName = split.displayAsNear ? locationCandidate : null;
 
   return {
@@ -363,9 +418,10 @@ function tryPrepStructuredRecommendation(raw: string): QueryClassification | nul
  * Covers “brunch in London”, “coffee near Eiffel Tower”, “cheap birthday dinner London”, etc.
  */
 function tryDeterministicRecommendationBeforeVenue(raw: string): QueryClassification | null {
-  const prep = tryPrepStructuredRecommendation(raw);
+  const normalized = normalizeRoutingTypos(raw.trim());
+  const prep = tryPrepStructuredRecommendation(normalized);
   if (prep) return prep;
-  return tryImplicitTrailingCityRecommendation(raw);
+  return tryImplicitTrailingCityRecommendation(normalized);
 }
 
 const GOAL_SIGNAL_TOKENS = new Set([
@@ -440,17 +496,18 @@ function extractTrailingLocationCandidate(raw: string): string | null {
 }
 
 function extractLocationCandidate(raw: string): string | null {
-  const close = raw.match(/\bclose\s+to\s+([A-Za-z][A-Za-z\s'-]{1,48})$/i);
+  const n = normalizeRoutingTypos(raw);
+  const close = n.match(/\bclose\s+to\s+([A-Za-z][A-Za-z\s'-]{1,48})$/i);
   if (close?.[1]) {
-    const loc = close[1].trim().replace(/\s+/g, " ");
+    const loc = stripButClauseFromLocation(close[1].trim().replace(/\s+/g, " ")).locationCore;
     if (loc.length >= 2) return formatSearchQueryForDisplay(loc);
   }
-  const m = raw.match(/\b(?:in|near|around|by)\s+([A-Za-z][A-Za-z\s'-]{1,48})$/i);
+  const m = n.match(/\b(?:in|near|around|by)\s+([A-Za-z][A-Za-z\s'-]{1,48})$/i);
   if (m?.[1]) {
-    const loc = m[1].trim().replace(/\s+/g, " ");
+    const loc = stripButClauseFromLocation(m[1].trim().replace(/\s+/g, " ")).locationCore;
     if (loc.length >= 2) return formatSearchQueryForDisplay(loc);
   }
-  return extractTrailingLocationCandidate(raw);
+  return extractTrailingLocationCandidate(n);
 }
 
 const GENERIC_GOAL_PLACE_PREFIX =
@@ -471,8 +528,8 @@ function looksLikeVenueCandidate(before: string): boolean {
 
 /** True when the text after "for …" reads like a visit goal, not boilerplate like "rent". */
 export function hasGoalTailSignals(after: string): boolean {
-  const t = after.toLowerCase();
-  return /\b(stud(y|ying|ies)|laptop|wifi|work|homework|party|nightlife|celebrate|celebration|birthday|anniversary|cheap|budget|affordable|value|date|romantic|proposal|family|kids|children|quiet|calm|focus|reading|toast|occasion|gathering|dinner|brunch|lunch|coffee|espresso|caffeine|vegan|vegetarian|wait(ing)?|queue|line|crowded|no waiting time|no waiting line|low wait|no line|not crowded|fancy|splurge)\b/.test(
+  const t = normalizeRoutingTypos(after).toLowerCase();
+  return /\b(stud(y|ying|ies)|laptop|wifi|work|homework|party|nightlife|celebrate|celebration|birthday|anniversary|cheap|budget|affordable|value|date|romantic|proposal|family|kids|children|quiet|calm|focus|reading|toast|occasion|gathering|dinner|brunch|lunch|coffee|espresso|caffeine|vegan|vegetarian|wait(ing)?|queue|line|crowded|no waiting time|no waiting line|low wait|no line|not crowded|fancy|splurge|michelin|fine dining|tasting menu)\b/.test(
     t,
   );
 }
@@ -604,7 +661,7 @@ function tryTrailingPlaceWithIntent(raw: string): QueryClassification | null {
         placeNameCandidate: left,
         intentGoalText: right.trim(),
         queryExplanation:
-          "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; VibeGap still compares mock social signals to review data for the matched place.",
+          "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; VibeGap still contrasts illustrative social framing with review data for the matched place.",
         queryContextBanner: "Checking this place against your goal.",
         locationCandidate: null,
         recommendationMode: false,
@@ -633,7 +690,7 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
         placeNameCandidate: before,
         intentGoalText: after,
         queryExplanation:
-          "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; VibeGap compares mock social signals to review data for that named pick.",
+          "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; VibeGap contrasts illustrative social framing with review data for that named pick.",
         queryContextBanner: "Checking this place against your goal.",
         locationCandidate: null,
         recommendationMode: false,

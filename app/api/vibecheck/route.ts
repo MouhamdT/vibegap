@@ -58,7 +58,7 @@ export async function POST(request: Request) {
       nearAnchorName: landmarkRecommendations.nearAnchorName,
       anchorNote: landmarkRecommendations.anchorNote,
       candidates: landmarkRecommendations.candidates,
-      sourceLabel: "Google Places · Google review signals when available · Illustrative prototype social signal",
+      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
       recoveryMessage: null,
     });
   }
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       nearAnchorName: nearAnchor,
       anchorNote,
       candidates: ranked.slice(0, 6),
-      sourceLabel: "Google Places · Google review signals when available · Illustrative prototype social signal",
+      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
       recoveryMessage: null,
     });
   }
@@ -89,8 +89,9 @@ export async function POST(request: Request) {
       detectedIntentLabel: intent.label,
       locationCandidate: null,
       candidates: [],
-      sourceLabel: "Illustrative venue data · Illustrative prototype social signal",
-      recoveryMessage: "Add a city or neighborhood so I can suggest real places. Try: quiet place to study in Copenhagen",
+      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
+      recoveryMessage:
+        "I couldn't find a confident match. Try adding a city, neighborhood, or landmark.",
     });
   }
 

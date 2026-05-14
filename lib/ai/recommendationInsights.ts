@@ -174,7 +174,7 @@ export function buildRecommendationInsights(
     top?.mainRisk ?? "Signal depth across candidates is thinner than ideal for a high-confidence pick.";
 
   const confidenceNote =
-    "Google Places is used when configured. Review themes reflect available Google review signals where present. Social comparison uses mock social signals and is illustrative only.";
+    "Uses Google Places and available review signals where present. Social comparison is illustrative.";
 
   return {
     topPickName: top?.place.name ?? `Top pick in ${locationCandidate}`,

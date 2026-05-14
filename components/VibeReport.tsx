@@ -60,14 +60,16 @@ export function VibeReport({ report }: VibeReportProps) {
     report.queryMode === "place_with_intent" && placeNameForRow !== null && report.placeIntentGoalDisplay;
 
   return (
-    <article className="space-y-6 sm:space-y-7" aria-label="VibeGap report">
-      <header className="space-y-2 border-b border-stone-200/50 pb-5">
+    <article className="space-y-5 sm:space-y-6" aria-label="VibeGap report">
+      <header className="space-y-2 border-b border-stone-200/50 pb-4">
         <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Your search</p>
         <p className="text-sm font-medium tracking-tight text-stone-900">{report.searchQueryDisplay}</p>
         <p className="text-xs font-medium text-stone-800">{report.queryContextBanner}</p>
         <p className="max-w-2xl text-[11px] leading-relaxed text-stone-500">{report.queryExplanation}</p>
         {report.googlePlacesFallback === "no_confident_match" ? (
-          <p className="max-w-2xl text-[11px] text-stone-500">No confident venue match — illustrative data in use.</p>
+          <p className="max-w-2xl text-[11px] leading-relaxed text-stone-600">
+            I couldn&apos;t find a confident match for that search. Try adding a city, neighborhood, or landmark.
+          </p>
         ) : null}
         {report.googlePlacesFallback === "lookup_unavailable" ? (
           <p className="max-w-2xl text-[11px] text-stone-500">Venue lookup unavailable — illustrative data in use.</p>
@@ -99,7 +101,7 @@ export function VibeReport({ report }: VibeReportProps) {
         <p className="text-[10px] text-stone-400 tabular-nums">{new Date(report.generatedAt).toLocaleString()}</p>
       </header>
 
-      <section className="rounded-lg border border-stone-200/60 bg-white p-4 sm:p-5">
+      <section className="rounded-lg border border-stone-200/60 bg-white p-3.5 sm:p-4">
         <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Decision</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${decisionTone(decision.label)}`}>

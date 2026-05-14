@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { AnalysisStatusLine } from "@/components/AnalysisStatusLine";
+import { useCallback, useState } from "react";
 import { ExampleSearchChips } from "@/components/ExampleSearchChips";
 import { SearchBar } from "@/components/SearchBar";
 import { CandidateResults } from "@/components/CandidateResults";
 import { MethodologyAfterResults, MethodologyLandingPreview } from "@/components/MethodologyPanel";
 import { VibeReport } from "@/components/VibeReport";
 import type { RankedCandidate, VibeReport as VibeReportModel, VibecheckResponse } from "@/lib/types/vibecheck";
+
+const FRIENDLY_API_ERROR =
+  "Something went wrong while checking places. Your previous results are still shown.";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -131,24 +133,22 @@ export function VibeGapApp() {
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [loadPhase, setLoadPhase] = useState(0);
+  const [emptyInputNotice, setEmptyInputNotice] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!loading) return;
-    let phase = 0;
-    const id = window.setInterval(() => {
-      phase = (phase + 1) % 3;
-      setLoadPhase(phase);
-    }, 650);
-    return () => window.clearInterval(id);
-  }, [loading]);
+  const handleSearchInputChange = useCallback((v: string) => {
+    setEmptyInputNotice(null);
+    setSearchInput(v);
+  }, []);
 
   const runSearch = useCallback(async (query: string) => {
     const trimmed = query.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      setEmptyInputNotice("Tell me the plan first — for example, 'quiet place to study in Tel Aviv'.");
+      return;
+    }
 
+    setEmptyInputNotice(null);
     setLoading(true);
-    setLoadPhase(0);
     setError(null);
     try {
       const res = await fetch("/api/vibecheck", {
@@ -160,9 +160,8 @@ export function VibeGapApp() {
       const raw: unknown = await res.json().catch(() => null);
 
       if (!res.ok) {
-        const msg =
-          isRecord(raw) && typeof raw.error === "string" ? raw.error : `Request failed (${res.status})`;
-        setError(msg);
+        console.warn("[VibeGap] vibecheck error", res.status, raw);
+        setError(FRIENDLY_API_ERROR);
         return;
       }
 
@@ -188,105 +187,120 @@ export function VibeGapApp() {
       }
 
       if (!isSingleReportPayload(raw)) {
-        setError("Unable to parse the server response.");
+        console.warn("[VibeGap] Unexpected vibecheck payload shape");
+        setError(FRIENDLY_API_ERROR);
         return;
       }
 
       setReport(raw.report);
       setRecommendations(null);
       setRecoveryMessage(null);
-    } catch {
-      setError("Network error — check your connection and try again.");
+    } catch (e) {
+      console.warn("[VibeGap] vibecheck network failure", e);
+      setError(FRIENDLY_API_ERROR);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const handleEmptySubmit = useCallback(() => {
+    setEmptyInputNotice("Tell me the plan first — for example, 'quiet place to study in Tel Aviv'.");
+  }, []);
+
   const useCompactChrome = Boolean(report || recommendations || recoveryMessage);
   const isRecommendationLayout = Boolean(recommendations);
   const hasResultsBody = Boolean(recommendations || recoveryMessage || report);
-  const busyLabel = useCompactChrome ? "Updating results…" : "Finding matches…";
 
   return (
     <div
-      className={`mx-auto w-full ${isRecommendationLayout ? "max-w-6xl" : "max-w-5xl"} ${useCompactChrome ? "space-y-4 sm:space-y-4" : "space-y-8 sm:space-y-10"}`}
+      className={`mx-auto w-full ${isRecommendationLayout ? "max-w-6xl" : "max-w-5xl"} ${useCompactChrome ? "space-y-3 sm:space-y-3" : "space-y-10 sm:space-y-12"}`}
     >
       {!useCompactChrome ? (
-        <div className="flex flex-col items-center space-y-8 text-center sm:space-y-9">
-          <header className="max-w-xl space-y-3 px-1 sm:max-w-2xl">
-            <h1 className="text-balance text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">
+        <div className="flex flex-col items-center space-y-10 text-center sm:space-y-12">
+          <header className="max-w-2xl space-y-4 px-2 sm:max-w-2xl">
+            <h1 className="text-balance text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl sm:leading-tight">
               Find the right place for the plan.
             </h1>
-            <p className="text-pretty text-sm leading-relaxed text-stone-600 sm:text-base">
+            <p className="text-pretty text-base leading-relaxed text-stone-600 sm:text-lg">
               Rank places by fit, risk, and review reality — not just hype.
             </p>
           </header>
 
-          <div className="flex w-full flex-col items-center gap-3">
+          <div className="flex w-full flex-col items-center gap-5">
             <SearchBar
               value={searchInput}
-              onValueChange={setSearchInput}
+              onValueChange={handleSearchInputChange}
               onSearch={runSearch}
+              onEmptySubmit={handleEmptySubmit}
               disabled={loading}
               busy={loading}
-              busyLabel={busyLabel}
-              placeholder="Try: quiet place to study in Tel Aviv"
+              busyLabel="Analyzing…"
+              placeholder='Try "quiet place to study in Tel Aviv"'
               submitLabel="Find matches"
               layout="hero"
             />
+            {emptyInputNotice ? (
+              <p className="max-w-xl px-2 text-center text-sm leading-relaxed text-amber-900/90" role="status">
+                {emptyInputNotice}
+              </p>
+            ) : null}
             <ExampleSearchChips
               disabled={loading}
               onSelect={async (q) => {
-                setSearchInput(q);
+                handleSearchInputChange(q);
                 await runSearch(q);
               }}
             />
             {loading ? (
-              <div className="flex w-full max-w-xl flex-col items-center gap-1.5 sm:max-w-2xl">
-                <p className="text-[12px] font-medium text-stone-500">{busyLabel}</p>
-                <AnalysisStatusLine activePhase={loadPhase} />
-              </div>
+              <p className="text-center text-[12px] font-medium text-stone-500" role="status">
+                Updating recommendation…
+              </p>
             ) : null}
-            <p className="max-w-md px-2 text-[11px] leading-relaxed text-stone-400">
-              Goal-first recommendations · Review-signal scoring · Transparent tradeoffs
+            <p className="max-w-lg px-3 text-center text-[12px] leading-relaxed text-stone-500 sm:text-[13px]">
+              VibeGap turns a travel plan into a ranked shortlist using venue data, review themes, and goal-weighted scoring.
             </p>
             <MethodologyLandingPreview />
           </div>
         </div>
       ) : (
-        <div className="space-y-3 border-b border-stone-200/40 pb-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-            <div className="min-w-0 max-w-md shrink-0 space-y-1 lg:pt-0.5">
-              <h1 className="text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">Find the right place for the plan.</h1>
-              <p className="text-xs leading-relaxed text-stone-500 sm:text-sm">
+        <div className="space-y-2 border-b border-stone-200/40 pb-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+            <div className="min-w-0 max-w-md shrink-0 space-y-0.5">
+              <h1 className="text-base font-semibold tracking-tight text-stone-950 sm:text-lg">Find the right place for the plan.</h1>
+              <p className="text-[11px] leading-relaxed text-stone-500 sm:text-xs">
                 Rank places by fit, risk, and review reality — not just hype.
               </p>
             </div>
             <div className="min-w-0 w-full flex-1 lg:flex lg:justify-end">
-              <div className="w-full lg:max-w-[680px]">
+              <div className="w-full lg:max-w-[min(100%,42rem)]">
                 <SearchBar
                   value={searchInput}
-                  onValueChange={setSearchInput}
+                  onValueChange={handleSearchInputChange}
                   onSearch={runSearch}
+                  onEmptySubmit={handleEmptySubmit}
                   disabled={loading}
                   busy={loading}
-                  busyLabel={busyLabel}
-                  placeholder="Try: quiet place to study in Tel Aviv"
+                  busyLabel="Analyzing…"
+                  placeholder='Try "quiet place to study in Tel Aviv"'
                   submitLabel="Find matches"
                   layout="compact"
                 />
               </div>
             </div>
           </div>
+          {emptyInputNotice ? (
+            <p className="text-[12px] leading-relaxed text-amber-900/90 lg:ml-auto lg:max-w-[min(100%,42rem)]" role="status">
+              {emptyInputNotice}
+            </p>
+          ) : null}
           {loading ? (
-            <div className="flex flex-col gap-1.5 lg:ml-auto lg:max-w-[680px]">
-              <p className="text-[12px] font-medium text-stone-500">{busyLabel}</p>
-              <AnalysisStatusLine activePhase={loadPhase} />
-            </div>
+            <p className="text-[12px] font-medium text-stone-500 lg:ml-auto lg:max-w-[min(100%,42rem)]" role="status">
+              Updating recommendation…
+            </p>
           ) : null}
           {error ? (
             <div
-              className="rounded-lg border border-red-200/70 bg-red-50/40 px-3 py-2 text-sm text-red-800 lg:ml-auto lg:max-w-[680px]"
+              className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-2 text-[12px] leading-relaxed text-amber-950 lg:ml-auto lg:max-w-[min(100%,42rem)]"
               role="alert"
             >
               {error}
@@ -296,17 +310,23 @@ export function VibeGapApp() {
       )}
 
       {!useCompactChrome && error ? (
-        <p className="text-center text-sm text-red-600" role="alert">
+        <p className="text-center text-sm leading-relaxed text-amber-950" role="alert">
           {error}
         </p>
       ) : null}
 
       {hasResultsBody ? (
         <>
-          <div className="rounded-xl border border-stone-200/50 bg-white/90 p-4 sm:p-5">
+          <div className="rounded-xl border border-stone-200/50 bg-white/95 p-3 sm:p-4">
             {recoveryMessage ? (
-              <div className="rounded-xl border border-dashed border-stone-100 bg-stone-50/30 px-5 py-10 text-center sm:px-8 sm:py-12">
-                <p className="text-sm leading-relaxed text-stone-600">{recoveryMessage}</p>
+              <div className="rounded-lg border border-dashed border-stone-200/80 bg-stone-50/40 px-4 py-8 text-left sm:px-6 sm:py-10">
+                <p className="text-sm font-medium leading-relaxed text-stone-800">{recoveryMessage}</p>
+                <p className="mt-3 text-[12px] leading-relaxed text-stone-600">Examples:</p>
+                <ul className="mt-2 list-inside list-disc space-y-1 text-[12px] leading-relaxed text-stone-600">
+                  <li>brunch near Trevi Fountain</li>
+                  <li>quiet cafe in Copenhagen</li>
+                  <li>cheap birthday dinner London</li>
+                </ul>
               </div>
             ) : recommendations ? (
               <CandidateResults

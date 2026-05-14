@@ -1,8 +1,5 @@
 "use client";
 
-const DATA_HONESTY =
-  "Venue details and review signals come from Google Places when available. Social comparison is illustrative in this prototype and should not be treated as live social media data.";
-
 const STEPS: readonly { title: string; body: string }[] = [
   {
     title: "Intent parsing",
@@ -35,10 +32,10 @@ const GOAL_WEIGHTS: readonly { goal: string; bullets: readonly string[] }[] = [
 
 function MethodologyInner({ className = "" }: { className?: string }) {
   return (
-    <div className={`space-y-5 text-left ${className}`}>
+    <div className={`space-y-4 text-left ${className}`}>
       <div>
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">How VibeGap scores a place</h3>
-        <ol className="mt-3 space-y-2.5 border-l border-stone-200/80 pl-3.5">
+        <ol className="mt-2.5 space-y-2 border-l border-stone-200/80 pl-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="text-[12px] leading-snug text-stone-700">
               <span className="font-medium text-stone-900">
@@ -72,7 +69,7 @@ function MethodologyInner({ className = "" }: { className?: string }) {
             <span className="font-medium text-stone-800">Intent Fit</span> — goal match from review-derived signals.
           </li>
           <li>
-            <span className="font-medium text-stone-800">VibeGap</span> — mismatch between mock social tone and review reality (illustrative social only).
+            <span className="font-medium text-stone-800">VibeGap</span> — gap between illustrative social comparison and review-backed signals.
           </li>
           <li>
             <span className="font-medium text-stone-800">Confidence</span> — strength of available Google review signals.
@@ -81,11 +78,6 @@ function MethodologyInner({ className = "" }: { className?: string }) {
             <span className="font-medium text-stone-800">GO / MAYBE / SKIP</span> — risk-adjusted recommendation from fit plus tradeoffs.
           </li>
         </ul>
-      </div>
-
-      <div className="rounded-md border border-dashed border-stone-200/70 px-3 py-2.5">
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Data honesty</p>
-        <p className="mt-1.5 text-[11px] leading-relaxed text-stone-600">{DATA_HONESTY}</p>
       </div>
     </div>
   );
@@ -98,7 +90,7 @@ export function MethodologyLandingPreview() {
       <p className="text-center text-[11px] leading-relaxed text-stone-500">
         Built as a decision analytics MVP: intent parsing → review signals → weighted scoring → explainable recommendation.
       </p>
-      <details className="mt-3 rounded-lg border border-stone-200/50 bg-white/50 px-3 py-2.5 text-left sm:px-4">
+      <details className="mt-2.5 rounded-lg border border-stone-200/40 bg-white/40 px-3 py-2 text-left sm:px-3.5">
         <summary className="cursor-pointer list-none text-center text-[11px] font-medium text-stone-700 marker:content-none [&::-webkit-details-marker]:hidden">
           <span className="underline decoration-stone-300 underline-offset-4 hover:text-stone-900">View methodology</span>
         </summary>
@@ -111,10 +103,10 @@ export function MethodologyLandingPreview() {
 /** Collapsed-by-default methodology after results (recommendation or single-place). */
 export function MethodologyAfterResults() {
   return (
-    <details className="mt-1 rounded-lg border border-stone-200/50 bg-white/60 px-4 py-3 sm:px-5">
+    <details className="mt-1 rounded-lg border border-stone-200/40 bg-white/50 px-3 py-2.5 sm:px-4">
       <summary className="cursor-pointer list-none text-[11px] font-medium text-stone-800 marker:content-none [&::-webkit-details-marker]:hidden">
         <span className="underline decoration-stone-300 underline-offset-4 hover:text-stone-950">How scoring works</span>
-        <span className="ml-2 font-normal text-stone-500">— methodology and data honesty</span>
+        <span className="ml-2 font-normal text-stone-500">— methodology</span>
       </summary>
       <MethodologyInner className="mt-4 border-t border-stone-100 pt-4" />
     </details>
