@@ -25,13 +25,16 @@ export function RecommendationInsights({ insights }: RecommendationInsightsProps
         <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-stone-500">Recommended first</p>
         <p className="mt-1 text-base font-semibold tracking-tight text-stone-900">{insights.topPickName}</p>
         <div className="mt-2 text-[13px] leading-snug text-stone-600">
-          <span className="font-medium text-stone-800">Why:</span> {insights.topPickReason}
+          <span className="font-medium text-stone-800">Why it won:</span> {insights.whyItWon}
         </div>
-        <p className="mt-2 text-[11px] font-medium tabular-nums text-stone-600">
-          <span className="text-stone-500">Stats:</span> {formatDecisionStats(insights.decisionCounts)}
+        <p className="mt-2 text-[12px] leading-snug text-stone-600">
+          <span className="font-medium text-stone-800">Main tradeoff:</span> {insights.mainTradeoff}
         </p>
         <p className="mt-1.5 text-[12px] leading-snug text-stone-600">
-          <span className="font-medium text-stone-800">Main tradeoff:</span> {insights.mainTradeoff}
+          <span className="font-medium text-stone-800">Best alternative if:</span> {insights.bestAlternativeIf}
+        </p>
+        <p className="mt-2 text-[11px] font-medium tabular-nums text-stone-600">
+          <span className="text-stone-500">Stats:</span> {formatDecisionStats(insights.decisionCounts)}
         </p>
         <div className="mt-3">
           <button

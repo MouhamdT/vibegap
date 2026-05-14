@@ -640,6 +640,7 @@ function buildDecisionSummary(input: {
   const { score, intent, place } = input;
   const confidence = buildDecisionConfidence(place, intent);
   const hasGoal = intent.kind !== "venue_lookup";
+  const goalHint = hasGoal ? `For “${intent.label.toLowerCase()}”, ` : "";
   const studyGoal = intent.kind === "study_work" || intent.kind === "quiet_calm";
   const budgetGoal = intent.kind === "budget_eats" || intent.kind === "budget_celebration";
   const lowWaitGoal = intent.kind === "low_wait";
@@ -657,7 +658,7 @@ function buildDecisionSummary(input: {
     (lowWaitGoal && score.waitRiskScore >= 72)
   ) {
     label = "SKIP";
-    decisionLine = "Poor fit for your stated goal based on review and vibe signals.";
+    decisionLine = `${goalHint}review themes conflict with the plan based on available signals — not a strong pick for this goal.`;
   } else if (
     score.intentFitScore >= 70 &&
     score.vibeGapScore < 60 &&
@@ -665,26 +666,26 @@ function buildDecisionSummary(input: {
     confidence !== "Low"
   ) {
     label = "GO";
-    decisionLine = "Good fit for your goal, with no major review warnings.";
+    decisionLine = `${goalHint}fit looks strong with no major review warnings in the current snapshot — worth choosing if the listed risk is acceptable.`;
   } else {
     label = "MAYBE";
     decisionLine = lowWaitGoal
-      ? "Worth considering, but reviews suggest line or reservation friction."
-      : "Worth considering, but reviews suggest waits, noise, or price risk.";
+      ? `${goalHint}possible fit, but reviews still suggest line or reservation friction — check timing.`
+      : `${goalHint}possible fit, but reviews suggest waits, noise, or price risk — weigh the tradeoff.`;
   }
 
   if (lowWaitGoal && score.waitRiskScore >= 64 && label === "GO") {
     label = "MAYBE";
-    decisionLine = "Better if you can book ahead or arrive off-peak.";
+    decisionLine = `${goalHint}better if you can book ahead or arrive off-peak — queue themes still appear in reviews.`;
   }
 
   if (!hasGoal) {
     if (score.vibeGapScore >= 70) {
       label = "MAYBE";
-      decisionLine = "Mixed signal check for this venue lookup; review and vibe alignment is not strong enough to commit.";
+      decisionLine = "Venue lookup without a parsed goal — mock social and review signals disagree enough that we would not over-commit.";
     } else if (label === "GO" && (score.vibeGapScore >= 45 || score.waitRiskScore >= 60 || score.priceRealityScore >= 60)) {
       label = "MAYBE";
-      decisionLine = "Venue lookup looks workable, but risk signals suggest caution before committing.";
+      decisionLine = "Venue lookup looks workable, but risk signals suggest caution before you lock a plan.";
     }
   }
 
@@ -696,7 +697,7 @@ function buildDecisionSummary(input: {
     confidence !== "Low"
   ) {
     label = "GO";
-    decisionLine = "Good fit for your goal, with no major review warnings.";
+    decisionLine = `${goalHint}fit looks strong with no major review warnings in the current snapshot — best current read based on available signals.`;
   }
 
   const reason = `${decisionLine} ${confidenceReason(place, confidence, hasGoal)}`;

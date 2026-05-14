@@ -89,6 +89,20 @@ export function buildLandmarkNearbyTextQuery(intentGoalText: string, anchorDispl
   return `${goal} near ${anchor}`.replace(/\s+/g, " ").trim();
 }
 
+function diningIntentFromGoalFragment(goalText: string): DetectedIntent | null {
+  const t = goalText.toLowerCase();
+  if (/\bbrunch\b/.test(t)) {
+    return { kind: "budget_eats", label: "Brunch", confidence: "medium", matchedSignals: ["brunch"] };
+  }
+  if (/\b(lunch|dinner|breakfast|supper)\b/.test(t)) {
+    return { kind: "budget_eats", label: "Dining", confidence: "medium", matchedSignals: ["meal"] };
+  }
+  if (/\b(coffee|espresso)\b/.test(t)) {
+    return { kind: "budget_eats", label: "Coffee", confidence: "medium", matchedSignals: ["coffee"] };
+  }
+  return null;
+}
+
 export type LandmarkRecommendationResult = {
   detectedIntent: DetectedIntent;
   locationCandidate: string;
@@ -113,7 +127,11 @@ export async function tryLandmarkGoalRecommendations(
   if (!goalText || !anchorCandidate) return null;
   if (!hasGoalTailSignals(goalText)) return null;
 
-  const detectedIntent = resolveReportIntent(searchQuery, classification);
+  const detectedIntentBase = resolveReportIntent(searchQuery, classification);
+  const mealIntent = diningIntentFromGoalFragment(goalText);
+  const detectedIntent =
+    detectedIntentBase.kind === "venue_lookup" && mealIntent != null ? mealIntent : detectedIntentBase;
+
   const resolved = await resolvePlaceForReport(searchQuery, classification, intentForResolve);
 
   if (resolved.place.dataSource !== "google" || !isGooglePlaceLandmarkAnchor(resolved.place.googleTypes)) {

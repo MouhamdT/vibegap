@@ -38,6 +38,8 @@ export interface RankedCandidate {
   decision: CandidateDecision;
   fitScore: number;
   oneSentenceReason: string;
+  /** Human GO/MAYBE/SKIP headline (decision analytics tone). */
+  decisionToneLine: string;
   rankReason: string;
   scoreDriver: string;
   mainRisk: string;
@@ -57,9 +59,13 @@ export interface RecommendationScoringWeight {
 
 export interface RecommendationInsights {
   topPickName: string;
-  topPickReason: string;
-  decisionSummary: string;
+  /** Primary reason the #1 candidate leads this shortlist. */
+  whyItWon: string;
+  /** One sentence on the main weakness or risk for the top pick. */
   mainTradeoff: string;
+  /** Suggests a second candidate when priorities differ. */
+  bestAlternativeIf: string;
+  decisionSummary: string;
   strongestRisk: string;
   confidenceNote: string;
   scoringWeights: RecommendationScoringWeight[];

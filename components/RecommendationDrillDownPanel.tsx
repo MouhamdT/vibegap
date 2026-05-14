@@ -15,7 +15,7 @@ export function RecommendationDrillDownPanel({
   onClose,
   variant,
 }: RecommendationDrillDownPanelProps) {
-  const rankLine = c.rankReason.replace(/^Why ranked #\d+:\s*/i, "");
+  const rankLine = c.rankReason;
 
   const shell =
     variant === "sidebar"
@@ -53,6 +53,7 @@ export function RecommendationDrillDownPanel({
           </span>
           <span className="text-[11px] text-stone-600">Confidence {c.decision.confidence}</span>
         </div>
+        <p className="mt-1.5 text-[12px] font-medium leading-snug text-stone-700">{c.decisionToneLine}</p>
         <p className="mt-2 text-sm leading-relaxed text-stone-700">{c.oneSentenceReason}</p>
       </div>
 
@@ -71,6 +72,9 @@ export function RecommendationDrillDownPanel({
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-stone-600">
+        <span className="font-medium text-stone-800">Score driver:</span> {c.scoreDriver}
+      </p>
+      <p className="mt-1 text-[11px] leading-relaxed text-stone-600">
         <span className="font-medium text-stone-800">Main risk:</span> {c.mainRisk}
       </p>
       <p className="mt-1 text-[11px] leading-relaxed text-stone-600">

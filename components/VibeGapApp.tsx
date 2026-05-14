@@ -5,6 +5,7 @@ import { AnalysisStatusLine } from "@/components/AnalysisStatusLine";
 import { ExampleSearchChips } from "@/components/ExampleSearchChips";
 import { SearchBar } from "@/components/SearchBar";
 import { CandidateResults } from "@/components/CandidateResults";
+import { MethodologyAfterResults, MethodologyLandingPreview } from "@/components/MethodologyPanel";
 import { VibeReport } from "@/components/VibeReport";
 import type { RankedCandidate, VibeReport as VibeReportModel, VibecheckResponse } from "@/lib/types/vibecheck";
 
@@ -249,6 +250,7 @@ export function VibeGapApp() {
             <p className="max-w-md px-2 text-[11px] leading-relaxed text-stone-400">
               Goal-first recommendations · Review-signal scoring · Transparent tradeoffs
             </p>
+            <MethodologyLandingPreview />
           </div>
         </div>
       ) : (
@@ -300,24 +302,27 @@ export function VibeGapApp() {
       ) : null}
 
       {hasResultsBody ? (
-        <div className="rounded-xl border border-stone-200/50 bg-white/90 p-4 sm:p-5">
-          {recoveryMessage ? (
-            <div className="rounded-xl border border-dashed border-stone-100 bg-stone-50/30 px-5 py-10 text-center sm:px-8 sm:py-12">
-              <p className="text-sm leading-relaxed text-stone-600">{recoveryMessage}</p>
-            </div>
-          ) : recommendations ? (
-            <CandidateResults
-              key={recommendations.candidates.map((c) => c.place.id).join("\u001f")}
-              detectedIntent={recommendations.detectedIntent}
-              locationCandidate={recommendations.locationCandidate}
-              candidates={recommendations.candidates}
-              nearAnchorName={recommendations.nearAnchorName ?? undefined}
-              anchorNote={recommendations.anchorNote ?? undefined}
-            />
-          ) : report ? (
-            <VibeReport report={report} />
-          ) : null}
-        </div>
+        <>
+          <div className="rounded-xl border border-stone-200/50 bg-white/90 p-4 sm:p-5">
+            {recoveryMessage ? (
+              <div className="rounded-xl border border-dashed border-stone-100 bg-stone-50/30 px-5 py-10 text-center sm:px-8 sm:py-12">
+                <p className="text-sm leading-relaxed text-stone-600">{recoveryMessage}</p>
+              </div>
+            ) : recommendations ? (
+              <CandidateResults
+                key={recommendations.candidates.map((c) => c.place.id).join("\u001f")}
+                detectedIntent={recommendations.detectedIntent}
+                locationCandidate={recommendations.locationCandidate}
+                candidates={recommendations.candidates}
+                nearAnchorName={recommendations.nearAnchorName ?? undefined}
+                anchorNote={recommendations.anchorNote ?? undefined}
+              />
+            ) : report ? (
+              <VibeReport report={report} />
+            ) : null}
+          </div>
+          <MethodologyAfterResults />
+        </>
       ) : null}
     </div>
   );

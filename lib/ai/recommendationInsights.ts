@@ -1,9 +1,19 @@
 import type {
   DetectedIntent,
+  RankedCandidate,
   RecommendationInsights,
   RecommendationScoringWeight,
-  RankedCandidate,
 } from "@/lib/types/vibecheck";
+
+function looksStudyishPlace(place: { name: string; category: string }): boolean {
+  const text = `${place.category} ${place.name}`.toLowerCase();
+  return /\blibrary|bookstore|book shop|bookshop|study|cowork|co-working|workspace|reading room|book cafe\b/.test(text);
+}
+
+function looksCafeCoffee(place: { name: string; category: string }): boolean {
+  const text = `${place.category} ${place.name}`.toLowerCase();
+  return /\bcafe|coffee|espresso|roaster|cup\b/.test(text);
+}
 
 function weightsForIntent(intent: DetectedIntent): RecommendationScoringWeight[] {
   switch (intent.kind) {
@@ -61,62 +71,93 @@ function weightsForIntent(intent: DetectedIntent): RecommendationScoringWeight[]
   }
 }
 
-function topPickReason(intent: DetectedIntent): string {
-  switch (intent.kind) {
-    case "study_work":
-    case "quiet_calm":
-      return "Best balance of study-friendly context, rating quality, and manageable crowd risk.";
-    case "budget_celebration":
-    case "budget_eats":
-      return "Best balance of value fit, celebration practicality, and wait-risk control.";
-    case "luxury":
-    case "date_night":
-      return "Best balance of occasion fit, ambience reputation, and reservation reliability.";
-    case "party_nightlife":
-      return "Best balance of nightlife energy, crowd expectations, and queue risk.";
-    case "low_wait":
-      return "Best balance of low-wait potential and reservation friction control.";
-    default:
-      return "Best overall fit across current ranking weights and risk signals.";
+function whyItWonSentence(top: RankedCandidate, intent: DetectedIntent): string {
+  const driver = top.scoreDriver;
+  const rc = top.place.reviewCount;
+  const k = intent.kind;
+
+  if (k === "study_work" || k === "quiet_calm") {
+    if (looksStudyishPlace(top.place)) {
+      return `Best balance of study-friendly context, review depth (${rc.toLocaleString()} reviews), and manageable crowd risk — strongest driver: ${driver}.`;
+    }
+    return `Leads on fit (${top.fitScore}) with ${driver.toLowerCase()} as the clearest signal in available review themes.`;
   }
+  if (k === "budget_celebration" || k === "budget_eats") {
+    return `Strong value and celebration practicality versus the rest of this shortlist — strongest driver: ${driver}.`;
+  }
+  if (k === "luxury" || k === "date_night") {
+    return `Strong occasion fit with premium atmosphere cues and broad review coverage — strongest driver: ${driver}.`;
+  }
+  if (k === "party_nightlife") {
+    return `Best energy alignment for a night out without giving up as much queue risk as lower-ranked picks — strongest driver: ${driver}.`;
+  }
+  if (k === "low_wait") {
+    return `Best balance of lower queue friction in the available signals versus peers — strongest driver: ${driver}.`;
+  }
+  if (intent.label === "Brunch" || intent.label === "Coffee" || intent.label === "Dining") {
+    return `Best balance of meal fit, location context, and review strength in this draw — strongest driver: ${driver}.`;
+  }
+  return `Best current match on fit score (${top.fitScore}) with ${driver.toLowerCase()} as the main driver versus alternatives in this shortlist.`;
 }
 
-function tradeoff(intent: DetectedIntent): { mainTradeoff: string; strongestRisk: string } {
-  switch (intent.kind) {
-    case "study_work":
-    case "quiet_calm":
-      return {
-        mainTradeoff: "Quiet fit vs. peak-hour crowd risk.",
-        strongestRisk: "Noise or seating pressure during busy hours.",
-      };
-    case "budget_celebration":
-    case "budget_eats":
-      return {
-        mainTradeoff: "Budget fit vs. reservation and timing friction.",
-        strongestRisk: "Price mismatch or long waits at peak dinner slots.",
-      };
-    case "luxury":
-    case "date_night":
-      return {
-        mainTradeoff: "Occasion polish vs. reservation reliability.",
-        strongestRisk: "Atmosphere mismatch if timing or table flow is off.",
-      };
-    case "party_nightlife":
-      return {
-        mainTradeoff: "Energy fit vs. queue and pacing friction.",
-        strongestRisk: "Long entry lines or crowding spikes at peak hours.",
-      };
-    case "low_wait":
-      return {
-        mainTradeoff: "Fast access vs. crowd/queue variability.",
-        strongestRisk: "Line and reservation friction during rush windows.",
-      };
-    default:
-      return {
-        mainTradeoff: "Fit score vs. reliability risk.",
-        strongestRisk: "Signal uncertainty across candidates.",
-      };
+function mainTradeoffSentence(top: RankedCandidate, intent: DetectedIntent): string {
+  const risk = top.mainRisk;
+  const k = intent.kind;
+  if (k === "study_work" || k === "quiet_calm") {
+    return `Peak-hour noise and seating pressure can still hurt deep focus — watch: ${risk}.`;
   }
+  if (k === "budget_celebration" || k === "budget_eats") {
+    return `Reservation timing and group tabs can still bite — main practical risk: ${risk}.`;
+  }
+  if (k === "luxury" || k === "date_night") {
+    return `Reservation pressure and night-to-night consistency remain the main downside — ${risk}.`;
+  }
+  if (k === "party_nightlife") {
+    return `Queues and pacing swing harder by night — main tradeoff: ${risk}.`;
+  }
+  if (k === "low_wait") {
+    return `Line and reservation themes in reviews can still clash with a strict no-wait plan — ${risk}.`;
+  }
+  if (intent.label === "Brunch" || intent.label === "Coffee" || intent.label === "Dining") {
+    return `Tourist-area crowding or wait timing may still affect the meal experience — ${risk}.`;
+  }
+  return `The main weakness to underwrite is ${risk.toLowerCase()} — weigh that against the fit score before you commit.`;
+}
+
+function bestAlternativeIfSentence(candidates: RankedCandidate[], intent: DetectedIntent): string {
+  if (candidates.length < 2) {
+    return "No strong second option in this shortlist — try widening the neighborhood or tightening one priority (price vs. ambience vs. wait).";
+  }
+  const top = candidates[0]!;
+  const alt = candidates[1]!;
+  const name = alt.place.name;
+  const k = intent.kind;
+
+  if (k === "study_work" || k === "quiet_calm") {
+    if (looksStudyishPlace(top.place) && looksCafeCoffee(alt.place) && !looksCafeCoffee(top.place)) {
+      return `Choose ${name} if you prefer a more classic café setting and accept more crowding risk.`;
+    }
+    if (alt.fitScore >= top.fitScore - 6 && alt.scoreDriver !== top.scoreDriver) {
+      return `Choose ${name} if ${alt.scoreDriver.toLowerCase()} matters more than ${top.scoreDriver.toLowerCase()} for your session.`;
+    }
+    return `Choose ${name} if you want a different noise profile and can trade a few fit points for that tradeoff.`;
+  }
+  if (k === "budget_celebration" || k === "budget_eats") {
+    if (alt.place.priceLevel < top.place.priceLevel) {
+      return `Choose ${name} if price/value matters more than view or atmosphere.`;
+    }
+    return `Choose ${name} if you want a tighter value read and accept a bit more reservation or wait risk.`;
+  }
+  if (k === "luxury" || k === "date_night") {
+    return `Choose ${name} if you want a livelier, more social celebration vibe and accept more noise energy.`;
+  }
+  if (k === "low_wait") {
+    return `Choose ${name} if you want lower wait risk in the review snapshot and can flex on ambience or menu breadth.`;
+  }
+  if (intent.label === "Brunch" || intent.label === "Coffee" || intent.label === "Dining") {
+    return `Choose ${name} if you want lower wait risk or better value and can trade a bit of “default best” meal fit.`;
+  }
+  return `Choose ${name} if your priority shifts toward ${alt.scoreDriver.toLowerCase()} rather than ${top.scoreDriver.toLowerCase()}.`;
 }
 
 export function buildRecommendationInsights(
@@ -128,16 +169,19 @@ export function buildRecommendationInsights(
   const go = candidates.filter((c) => c.decision.label === "GO").length;
   const maybe = candidates.filter((c) => c.decision.label === "MAYBE").length;
   const skip = candidates.filter((c) => c.decision.label === "SKIP").length;
-  const { mainTradeoff, strongestRisk } = tradeoff(detectedIntent);
+
+  const strongestRisk =
+    top?.mainRisk ?? "Signal depth across candidates is thinner than ideal for a high-confidence pick.";
 
   const confidenceNote =
-    "Google Places data is used when configured. Review signals depend on available Google review signals. Social comparison is illustrative in this prototype.";
+    "Google Places is used when configured. Review themes reflect available Google review signals where present. Social comparison uses mock social signals and is illustrative only.";
 
   return {
     topPickName: top?.place.name ?? `Top pick in ${locationCandidate}`,
-    topPickReason: top ? topPickReason(detectedIntent) : "No ranked candidates were available for this query.",
+    whyItWon: top ? whyItWonSentence(top, detectedIntent) : "No ranked candidates were available for this query.",
+    mainTradeoff: top ? mainTradeoffSentence(top, detectedIntent) : "Run a search to compare tradeoffs across real candidates.",
+    bestAlternativeIf: bestAlternativeIfSentence(candidates, detectedIntent),
     decisionSummary: `${go} GO · ${maybe} MAYBE · ${skip} SKIP`,
-    mainTradeoff,
     strongestRisk,
     confidenceNote,
     scoringWeights: weightsForIntent(detectedIntent),
@@ -147,7 +191,7 @@ export function buildRecommendationInsights(
           `Strongest driver: ${top.scoreDriver}.`,
           `Main risk to watch: ${top.mainRisk}.`,
           candidates[1]
-            ? `Beats the next option by ${top.fitScore - candidates[1].fitScore} fit points in this scoring model.`
+            ? `Beats ${candidates[1].place.name} by ${top.fitScore - candidates[1].fitScore} fit points in this scoring model.`
             : "No close second candidate was available in this run.",
         ]
       : [

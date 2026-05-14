@@ -86,6 +86,11 @@ export function RecommendationRankedShortlist({
                 {c.decision.confidence} confidence
               </p>
               <p className="mt-1.5 text-[12px] leading-snug text-stone-700">{c.oneSentenceReason}</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-stone-500">
+                <span className="font-medium text-stone-600">Driver:</span> {c.scoreDriver}
+                <span className="text-stone-300"> · </span>
+                <span className="font-medium text-stone-600">Best for:</span> {c.bestFor}
+              </p>
               <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
                 <span className="font-medium text-stone-600">Risk:</span> {c.mainRisk}
               </p>
