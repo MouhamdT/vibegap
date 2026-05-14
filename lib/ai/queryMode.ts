@@ -114,9 +114,9 @@ function looksLikeVenueCandidate(before: string): boolean {
 }
 
 /** True when the text after "for …" reads like a visit goal, not boilerplate like "rent". */
-function hasGoalTailSignals(after: string): boolean {
+export function hasGoalTailSignals(after: string): boolean {
   const t = after.toLowerCase();
-  return /\b(stud(y|ying|ies)|laptop|wifi|work|homework|party|nightlife|celebrate|celebration|birthday|anniversary|cheap|budget|affordable|value|date|romantic|proposal|family|kids|children|quiet|calm|focus|reading|toast|occasion|gathering|dinner|brunch|lunch|vegan|vegetarian|wait(ing)?|queue|line|crowded|no waiting time|no waiting line|low wait|no line|not crowded)\b/.test(
+  return /\b(stud(y|ying|ies)|laptop|wifi|work|homework|party|nightlife|celebrate|celebration|birthday|anniversary|cheap|budget|affordable|value|date|romantic|proposal|family|kids|children|quiet|calm|focus|reading|toast|occasion|gathering|dinner|brunch|lunch|coffee|espresso|caffeine|vegan|vegetarian|wait(ing)?|queue|line|crowded|no waiting time|no waiting line|low wait|no line|not crowded|fancy|splurge)\b/.test(
     t,
   );
 }

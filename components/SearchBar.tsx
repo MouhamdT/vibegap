@@ -7,14 +7,39 @@ export type SearchBarProps = {
   /** Called with the trimmed query on submit (parent typically POSTs to `/api/vibecheck`). */
   onSearch?: (query: string) => void | Promise<void>;
   disabled?: boolean;
+  /** When set with `onValueChange`, the input is controlled by the parent (e.g. example chips). */
+  value?: string;
+  onValueChange?: (value: string) => void;
+  submitLabel?: string;
+  /** Hero landing vs compact toolbar after results. */
+  layout?: "hero" | "compact";
+  /** When true, submit button shows `busyLabel` and stays disabled via `disabled`. */
+  busy?: boolean;
+  busyLabel?: string;
 };
 
 export function SearchBar({
   placeholder = "Search a restaurant, café, hotel, or venue…",
   onSearch,
   disabled = false,
+  value: controlledValue,
+  onValueChange,
+  submitLabel = "Find matches",
+  layout = "hero",
+  busy = false,
+  busyLabel = "Finding matches…",
 }: SearchBarProps) {
-  const [value, setValue] = useState("");
+  const [internalValue, setInternalValue] = useState("");
+  const isControlled = controlledValue !== undefined;
+  const value = isControlled ? controlledValue : internalValue;
+
+  function setValue(next: string) {
+    if (isControlled) {
+      onValueChange?.(next);
+    } else {
+      setInternalValue(next);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -23,14 +48,27 @@ export function SearchBar({
     await onSearch?.(q);
   }
 
+  const isCompact = layout === "compact";
+  const buttonLabel = busy ? busyLabel : submitLabel;
+
   return (
     <form
       onSubmit={handleSubmit}
-      className="w-full max-w-2xl"
+      className={
+        isCompact
+          ? "w-full max-w-[900px]"
+          : "w-full max-w-xl sm:max-w-2xl"
+      }
       role="search"
       aria-label="Search for a place"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:gap-2">
+      <div
+        className={
+          isCompact
+            ? "flex flex-col gap-2 sm:flex-row sm:items-stretch sm:gap-2.5"
+            : "flex flex-col gap-2.5 sm:flex-row sm:items-stretch sm:gap-2"
+        }
+      >
         <label className="sr-only" htmlFor="vibegap-search">
           Place name or address
         </label>
@@ -43,14 +81,22 @@ export function SearchBar({
           onChange={(e) => setValue(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className="min-h-14 flex-1 rounded-2xl border border-stone-200/80 bg-white px-5 py-3.5 text-base text-stone-900 shadow-sm outline-none ring-stone-900/5 transition placeholder:text-stone-400 focus:border-stone-300 focus:ring-4 disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
+          className={
+            isCompact
+              ? "min-h-12 min-w-0 flex-1 rounded-xl border border-stone-200/80 bg-white px-4 py-3 text-[15px] text-stone-950 shadow-none outline-none ring-stone-900/[0.03] transition placeholder:text-stone-400 focus:border-stone-300 focus:ring-[3px] focus:ring-stone-900/[0.06] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[3.25rem] sm:min-w-[420px] sm:px-5 sm:text-base"
+              : "min-h-14 min-w-0 flex-1 rounded-xl border border-stone-200/80 bg-white px-4 py-3.5 text-base text-stone-950 shadow-none outline-none ring-stone-900/[0.03] transition placeholder:text-stone-400 focus:border-stone-300 focus:ring-[3px] focus:ring-stone-900/[0.06] disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[3.5rem] sm:px-6 sm:text-lg"
+          }
         />
         <button
           type="submit"
           disabled={disabled || !value.trim()}
-          className="inline-flex min-h-14 shrink-0 items-center justify-center rounded-2xl bg-stone-900 px-8 text-base font-medium text-white shadow-sm transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:bg-stone-300 sm:px-10"
+          className={
+            isCompact
+              ? "inline-flex min-h-12 w-full shrink-0 items-center justify-center rounded-xl bg-stone-950 px-5 text-sm font-medium text-white transition hover:bg-stone-900 disabled:cursor-not-allowed disabled:bg-stone-300 sm:min-h-[3.25rem] sm:w-[172px] sm:max-w-[190px] sm:min-w-[160px] sm:px-4 sm:text-[15px]"
+              : "inline-flex min-h-14 shrink-0 items-center justify-center rounded-xl bg-stone-950 px-7 text-sm font-medium text-white transition hover:bg-stone-900 disabled:cursor-not-allowed disabled:bg-stone-300 sm:min-h-[3.5rem] sm:px-10 sm:text-base"
+          }
         >
-          Check vibe
+          {buttonLabel}
         </button>
       </div>
     </form>

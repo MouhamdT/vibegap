@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ProcessingSteps } from "@/components/ProcessingSteps";
+import { AnalysisStatusLine } from "@/components/AnalysisStatusLine";
+import { ExampleSearchChips } from "@/components/ExampleSearchChips";
 import { SearchBar } from "@/components/SearchBar";
 import { CandidateResults } from "@/components/CandidateResults";
 import { VibeReport } from "@/components/VibeReport";
@@ -116,42 +117,43 @@ function isSingleReportPayload(value: unknown): value is Extract<VibecheckRespon
 }
 
 export function VibeGapApp() {
+  const [searchInput, setSearchInput] = useState("");
   const [report, setReport] = useState<VibeReportModel | null>(null);
   const [recommendations, setRecommendations] = useState<{
     detectedIntent: Extract<VibecheckResponse, { mode: "recommendations" }>["detectedIntent"];
     locationCandidate: string;
     candidates: RankedCandidate[];
     sourceLabel: string;
+    nearAnchorName?: string | null;
+    anchorNote?: string | null;
   } | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stepId, setStepId] = useState("1");
-  const [pipelineStatus, setPipelineStatus] = useState<"idle" | "loading" | "success">("idle");
+  const [loadPhase, setLoadPhase] = useState(0);
 
   useEffect(() => {
     if (!loading) return;
-    let current = 1;
+    let phase = 0;
     const id = window.setInterval(() => {
-      if (current >= 4) return;
-      current += 1;
-      setStepId(String(current));
-    }, 500);
+      phase = (phase + 1) % 3;
+      setLoadPhase(phase);
+    }, 650);
     return () => window.clearInterval(id);
   }, [loading]);
 
-  const onSearch = useCallback(async (query: string) => {
-    setStepId("1");
+  const runSearch = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
     setLoading(true);
-    setPipelineStatus("loading");
+    setLoadPhase(0);
     setError(null);
-    setRecommendations(null);
-    setRecoveryMessage(null);
     try {
       const res = await fetch("/api/vibecheck", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: trimmed }),
       });
 
       const raw: unknown = await res.json().catch(() => null);
@@ -160,7 +162,6 @@ export function VibeGapApp() {
         const msg =
           isRecord(raw) && typeof raw.error === "string" ? raw.error : `Request failed (${res.status})`;
         setError(msg);
-        setPipelineStatus("idle");
         return;
       }
 
@@ -170,10 +171,11 @@ export function VibeGapApp() {
           locationCandidate: raw.locationCandidate,
           candidates: raw.candidates as RankedCandidate[],
           sourceLabel: raw.sourceLabel,
+          nearAnchorName: typeof raw.nearAnchorName === "string" ? raw.nearAnchorName : null,
+          anchorNote: typeof raw.anchorNote === "string" ? raw.anchorNote : null,
         });
         setReport(null);
-        setPipelineStatus("success");
-        setStepId("4");
+        setRecoveryMessage(null);
         return;
       }
 
@@ -181,70 +183,142 @@ export function VibeGapApp() {
         setReport(null);
         setRecommendations(null);
         setRecoveryMessage(raw.recoveryMessage);
-        setPipelineStatus("success");
-        setStepId("4");
         return;
       }
 
       if (!isSingleReportPayload(raw)) {
         setError("Unable to parse the server response.");
-        setPipelineStatus("idle");
         return;
       }
 
       setReport(raw.report);
       setRecommendations(null);
       setRecoveryMessage(null);
-      setPipelineStatus("success");
-      setStepId("4");
     } catch {
       setError("Network error — check your connection and try again.");
-      setPipelineStatus("idle");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const showPipeline = pipelineStatus !== "idle";
+  const useCompactChrome = Boolean(report || recommendations || recoveryMessage);
+  const isRecommendationLayout = Boolean(recommendations);
+  const hasResultsBody = Boolean(recommendations || recoveryMessage || report);
+  const busyLabel = useCompactChrome ? "Updating results…" : "Finding matches…";
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8">
-      <SearchBar onSearch={onSearch} disabled={loading} />
+    <div
+      className={`mx-auto w-full ${isRecommendationLayout ? "max-w-6xl" : "max-w-5xl"} ${useCompactChrome ? "space-y-4 sm:space-y-4" : "space-y-8 sm:space-y-10"}`}
+    >
+      {!useCompactChrome ? (
+        <div className="flex flex-col items-center space-y-8 text-center sm:space-y-9">
+          <header className="max-w-xl space-y-3 px-1 sm:max-w-2xl">
+            <h1 className="text-balance text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">
+              Find the right place for the plan.
+            </h1>
+            <p className="text-pretty text-sm leading-relaxed text-stone-600 sm:text-base">
+              Rank places by fit, risk, and review reality — not just hype.
+            </p>
+          </header>
 
-      {error ? (
+          <div className="flex w-full flex-col items-center gap-3">
+            <SearchBar
+              value={searchInput}
+              onValueChange={setSearchInput}
+              onSearch={runSearch}
+              disabled={loading}
+              busy={loading}
+              busyLabel={busyLabel}
+              placeholder="Try: quiet place to study in Tel Aviv"
+              submitLabel="Find matches"
+              layout="hero"
+            />
+            <ExampleSearchChips
+              disabled={loading}
+              onSelect={async (q) => {
+                setSearchInput(q);
+                await runSearch(q);
+              }}
+            />
+            {loading ? (
+              <div className="flex w-full max-w-xl flex-col items-center gap-1.5 sm:max-w-2xl">
+                <p className="text-[12px] font-medium text-stone-500">{busyLabel}</p>
+                <AnalysisStatusLine activePhase={loadPhase} />
+              </div>
+            ) : null}
+            <p className="max-w-md px-2 text-[11px] leading-relaxed text-stone-400">
+              Goal-first recommendations · Review-signal scoring · Transparent tradeoffs
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3 border-b border-stone-200/40 pb-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+            <div className="min-w-0 max-w-md shrink-0 space-y-1 lg:pt-0.5">
+              <h1 className="text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">Find the right place for the plan.</h1>
+              <p className="text-xs leading-relaxed text-stone-500 sm:text-sm">
+                Rank places by fit, risk, and review reality — not just hype.
+              </p>
+            </div>
+            <div className="min-w-0 w-full flex-1 lg:flex lg:justify-end">
+              <div className="w-full lg:max-w-[680px]">
+                <SearchBar
+                  value={searchInput}
+                  onValueChange={setSearchInput}
+                  onSearch={runSearch}
+                  disabled={loading}
+                  busy={loading}
+                  busyLabel={busyLabel}
+                  placeholder="Try: quiet place to study in Tel Aviv"
+                  submitLabel="Find matches"
+                  layout="compact"
+                />
+              </div>
+            </div>
+          </div>
+          {loading ? (
+            <div className="flex flex-col gap-1.5 lg:ml-auto lg:max-w-[680px]">
+              <p className="text-[12px] font-medium text-stone-500">{busyLabel}</p>
+              <AnalysisStatusLine activePhase={loadPhase} />
+            </div>
+          ) : null}
+          {error ? (
+            <div
+              className="rounded-lg border border-red-200/70 bg-red-50/40 px-3 py-2 text-sm text-red-800 lg:ml-auto lg:max-w-[680px]"
+              role="alert"
+            >
+              {error}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {!useCompactChrome && error ? (
         <p className="text-center text-sm text-red-600" role="alert">
           {error}
         </p>
       ) : null}
 
-      {showPipeline ? (
-        <div className="space-y-3">
-          <p className="text-center text-xs font-medium uppercase tracking-wider text-stone-500">
-            {pipelineStatus === "loading" ? "Running mock analysis" : "Analysis complete"}
-          </p>
-          <ProcessingSteps
-            status={pipelineStatus}
-            activeStepId={pipelineStatus === "loading" ? stepId : undefined}
-          />
+      {hasResultsBody ? (
+        <div className="rounded-xl border border-stone-200/50 bg-white/90 p-4 sm:p-5">
+          {recoveryMessage ? (
+            <div className="rounded-xl border border-dashed border-stone-100 bg-stone-50/30 px-5 py-10 text-center sm:px-8 sm:py-12">
+              <p className="text-sm leading-relaxed text-stone-600">{recoveryMessage}</p>
+            </div>
+          ) : recommendations ? (
+            <CandidateResults
+              key={recommendations.candidates.map((c) => c.place.id).join("\u001f")}
+              detectedIntent={recommendations.detectedIntent}
+              locationCandidate={recommendations.locationCandidate}
+              candidates={recommendations.candidates}
+              nearAnchorName={recommendations.nearAnchorName ?? undefined}
+              anchorNote={recommendations.anchorNote ?? undefined}
+            />
+          ) : report ? (
+            <VibeReport report={report} />
+          ) : null}
         </div>
       ) : null}
-
-      <div className="rounded-3xl border border-stone-200/80 bg-white/90 p-6 shadow-sm sm:p-10">
-        {recoveryMessage ? (
-          <div className="rounded-2xl border border-dashed border-stone-200 bg-stone-50/50 px-6 py-12 text-center">
-            <p className="text-sm text-stone-700">{recoveryMessage}</p>
-          </div>
-        ) : recommendations ? (
-          <CandidateResults
-            detectedIntent={recommendations.detectedIntent}
-            locationCandidate={recommendations.locationCandidate}
-            candidates={recommendations.candidates}
-            sourceLabel={recommendations.sourceLabel}
-          />
-        ) : (
-          <VibeReport report={report} />
-        )}
-      </div>
     </div>
   );
 }

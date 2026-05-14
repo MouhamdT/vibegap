@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VibeGap — Check the real vibe before you go",
+  title: "VibeGap — Goal-first place decisions",
   description:
-    "Compare social-media hype with review reality. Mock prototype — VibeGap v0.",
+    "Decision analytics MVP: intent parsing, Google Places venue signals, mocked social comparison, deterministic scoring, and explainable summaries.",
 };
 
 export default function RootLayout({

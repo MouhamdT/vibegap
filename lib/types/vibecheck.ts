@@ -103,6 +103,10 @@ export interface PlaceData {
   isRealPlaceData?: boolean;
   /** True when we successfully extracted signals from real Google review text. */
   hasRealGoogleReviews?: boolean;
+  /** Google Places `types` strings when `dataSource` is `google` (e.g. `tourist_attraction`). */
+  googleTypes?: readonly string[];
+  /** Google Places `primaryType` when available. */
+  googlePrimaryType?: string;
 }
 
 export type SocialSource = "tiktok" | "instagram" | "youtube";
@@ -233,6 +237,10 @@ export type VibecheckResponse =
       mode: "recommendations";
       detectedIntent: DetectedIntent;
       locationCandidate: string;
+      /** When set, UI title uses “near [name]” instead of “in [locationCandidate]”. */
+      nearAnchorName?: string | null;
+      /** Short note when a landmark/area was used as the geographic anchor for nearby picks. */
+      anchorNote?: string | null;
       candidates: RankedCandidate[];
       sourceLabel: string;
       recoveryMessage: null;

@@ -12,11 +12,11 @@ export function ScoreCard({ label, value, max = 100, hint, emphasis = false }: S
   const clamped = Math.min(max, Math.max(0, value));
   return (
     <div
-      className={`rounded-2xl border border-stone-200/80 bg-white shadow-sm ${
-        emphasis ? "p-6 ring-1 ring-stone-900/5" : "p-5"
+      className={`rounded-xl border border-stone-100 bg-white ${
+        emphasis ? "p-5 ring-1 ring-stone-900/[0.03]" : "p-4"
       }`}
     >
-      <p className="text-xs font-medium uppercase tracking-wider text-stone-500">{label}</p>
+      <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">{label}</p>
       <p
         className={`mt-2 font-semibold tracking-tight text-stone-900 tabular-nums ${
           emphasis ? "text-4xl" : "text-2xl"

@@ -2,42 +2,36 @@ import { VibeGapApp } from "@/components/VibeGapApp";
 
 export default function Home() {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-[#fafaf9]">
-      <header className="border-b border-stone-200/60 bg-white/70 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <span className="text-sm font-semibold tracking-tight text-stone-900">VibeGap</span>
-          <span className="text-xs font-medium uppercase tracking-wider text-stone-400">Mock MVP · v2.1</span>
+    <div className="flex min-h-full flex-1 flex-col bg-[#f7f6f4] text-stone-950">
+      <header className="border-b border-stone-200/50 bg-[#faf9f7]/95 backdrop-blur-sm">
+        <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4 sm:h-14 sm:px-6">
+          <span className="text-sm font-semibold tracking-tight">VibeGap</span>
+          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-500 sm:text-[11px]">
+            Decision analytics MVP
+          </span>
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col px-6 pb-24 pt-16 sm:pt-24">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-          <p className="text-xs font-medium uppercase tracking-[0.2em] text-stone-500">
-            Social hype · Review truth
-          </p>
-          <h1 className="mt-6 text-balance text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl sm:leading-[1.1]">
-            Check the real vibe before you go.
-          </h1>
-          <p className="mt-6 max-w-xl text-pretty text-lg leading-relaxed text-stone-600 sm:text-xl">
-            VibeGap contrasts short-form storytelling with aggregated review themes — a quick sanity check
-            before you commit time or money. Each report separates{" "}
-            <span className="font-medium text-stone-800">social vs. review mismatch</span> from{" "}
-            <span className="font-medium text-stone-800">fit for the goal in your search</span>.
-          </p>
-        </div>
-
-        <div className="mx-auto mt-14 w-full max-w-5xl">
+      <main className="flex flex-1 flex-col px-4 pb-14 pt-7 sm:px-6 sm:pb-16 sm:pt-9">
+        <div className="mx-auto w-full max-w-6xl">
           <VibeGapApp />
         </div>
 
-        <p className="mx-auto mt-20 max-w-lg text-center text-sm text-stone-500">
-          Google Places data is live when available. Social signals are mocked in this prototype. Mock fallback
-          queries use illustrative data.
-        </p>
+        <section
+          className="mx-auto mt-12 w-full max-w-xl rounded-lg border border-stone-200/50 bg-white/60 px-4 py-4 text-center sm:mt-16 sm:px-5"
+          aria-label="Data honesty"
+        >
+          <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-stone-400">Data honesty</p>
+          <p className="mt-2 text-[11px] leading-relaxed text-stone-600 sm:text-xs">
+            Uses Google Places and available review signals. Social comparison is illustrative in this prototype.
+          </p>
+        </section>
       </main>
 
-      <footer className="border-t border-stone-200/60 py-8 text-center text-xs text-stone-400">
-        Google Places live when available · Mock social signals only · No live TikTok/Instagram scraping
+      <footer className="border-t border-stone-200/50 bg-[#faf9f7]/80 py-6 text-center">
+        <p className="mx-auto max-w-xl px-4 text-[11px] leading-relaxed text-stone-500 sm:text-xs">
+          Intent parsing, deterministic scoring, explainable summaries.
+        </p>
       </footer>
     </div>
   );

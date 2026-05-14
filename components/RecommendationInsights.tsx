@@ -1,65 +1,79 @@
+"use client";
+
+import { useId, useState } from "react";
 import type { RecommendationInsights as RecommendationInsightsModel } from "@/lib/types/vibecheck";
 
 type RecommendationInsightsProps = {
   insights: RecommendationInsightsModel;
 };
 
+function formatDecisionStats(counts: RecommendationInsightsModel["decisionCounts"]): string {
+  const { go, maybe, skip } = counts;
+  return `${go} GO · ${maybe} MAYBE · ${skip} SKIP`;
+}
+
 export function RecommendationInsights({ insights }: RecommendationInsightsProps) {
+  const [scoringOpen, setScoringOpen] = useState(false);
+  const panelId = useId();
+
   return (
-    <section className="space-y-4 rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-stone-500">Recommendation analytics</p>
-
-      <div className="rounded-xl border border-stone-200 bg-stone-50/60 p-4">
-        <p className="text-xs uppercase tracking-wider text-stone-500">Best overall</p>
-        <h3 className="mt-1 text-lg font-semibold tracking-tight text-stone-900">{insights.topPickName}</h3>
-        <p className="mt-2 text-sm leading-relaxed text-stone-700">{insights.topPickReason}</p>
-      </div>
-
-      <div className="rounded-xl border border-stone-200 bg-stone-50/40 p-3">
-        <p className="text-[11px] uppercase tracking-wider text-stone-500">Why this ranked first</p>
-        <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-stone-700">
-          {insights.whyRankedFirstBullets.map((line) => (
-            <li key={line} className="flex gap-2">
-              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-stone-400" />
-              <span>{line}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl border border-stone-200 bg-stone-50/40 p-3">
-          <p className="text-[11px] uppercase tracking-wider text-stone-500">Main trade-off</p>
-          <p className="mt-1 text-sm text-stone-700">{insights.mainTradeoff}</p>
+    <div className="space-y-2">
+      <section
+        className="rounded-lg border border-stone-200/60 bg-[#faf9f7] px-4 py-3.5 sm:px-5 sm:py-4"
+        aria-label="Recommendation summary"
+      >
+        <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-stone-500">Recommended first</p>
+        <p className="mt-1 text-base font-semibold tracking-tight text-stone-900">{insights.topPickName}</p>
+        <div className="mt-2 text-[13px] leading-snug text-stone-600">
+          <span className="font-medium text-stone-800">Why:</span> {insights.topPickReason}
         </div>
-        <div className="rounded-xl border border-stone-200 bg-stone-50/40 p-3">
-          <p className="text-[11px] uppercase tracking-wider text-stone-500">Strongest risk</p>
-          <p className="mt-1 text-sm text-stone-700">{insights.strongestRisk}</p>
+        <p className="mt-2 text-[11px] font-medium tabular-nums text-stone-600">
+          <span className="text-stone-500">Stats:</span> {formatDecisionStats(insights.decisionCounts)}
+        </p>
+        <p className="mt-1.5 text-[12px] leading-snug text-stone-600">
+          <span className="font-medium text-stone-800">Main tradeoff:</span> {insights.mainTradeoff}
+        </p>
+        <div className="mt-3">
+          <button
+            type="button"
+            aria-expanded={scoringOpen}
+            aria-controls={panelId}
+            onClick={() => setScoringOpen((v) => !v)}
+            className="text-[11px] font-medium text-stone-700 underline decoration-stone-300 underline-offset-4 transition hover:text-stone-950 hover:decoration-stone-500"
+          >
+            {scoringOpen ? "Hide scoring logic" : "Scoring logic"}
+          </button>
         </div>
-        <div className="rounded-xl border border-stone-200 bg-stone-50/40 p-3">
-          <p className="text-[11px] uppercase tracking-wider text-stone-500">Confidence note</p>
-          <p className="mt-1 text-sm text-stone-700">{insights.confidenceNote}</p>
-        </div>
-      </div>
+      </section>
 
-      <div className="space-y-2">
-        <p className="text-[11px] uppercase tracking-wider text-stone-500">Scoring weights</p>
-        <div className="space-y-2">
-          {insights.scoringWeights.map((w) => (
-            <div key={w.label} className="space-y-1">
-              <div className="flex items-center justify-between text-xs text-stone-600">
-                <span>{w.label}</span>
-                <span className="font-medium text-stone-800">{w.weight}%</span>
+      {scoringOpen ? (
+        <section
+          id={panelId}
+          className="rounded-lg border border-stone-200/60 bg-white px-4 py-3 sm:px-5 sm:py-4"
+          aria-label="Scoring weights"
+        >
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Weights used in this run</p>
+          <div className="mt-3 space-y-2">
+            {insights.scoringWeights.map((w) => (
+              <div key={w.label} className="space-y-0.5">
+                <div className="flex items-center justify-between gap-2 text-[10px] text-stone-600">
+                  <span className="min-w-0 truncate">{w.label}</span>
+                  <span className="shrink-0 tabular-nums font-medium text-stone-800">{w.weight}%</span>
+                </div>
+                <div className="h-0.5 overflow-hidden rounded-full bg-stone-100">
+                  <div className="h-full rounded-full bg-emerald-600/35" style={{ width: `${w.weight}%` }} />
+                </div>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-stone-200">
-                <div className="h-full rounded-full bg-stone-500" style={{ width: `${w.weight}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <p className="text-xs font-medium text-stone-600">{insights.decisionSummary}</p>
-    </section>
+            ))}
+          </div>
+          <p className="mt-3 border-t border-stone-100 pt-3 text-[10px] tabular-nums text-stone-500">{insights.decisionSummary}</p>
+          <ul className="mt-2 space-y-1 text-[10px] leading-relaxed text-stone-500">
+            {insights.whyRankedFirstBullets.map((line, i) => (
+              <li key={i}>· {line}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+    </div>
   );
 }

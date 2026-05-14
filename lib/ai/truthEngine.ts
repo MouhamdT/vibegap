@@ -19,7 +19,7 @@ import type {
 const GAP_LOW_MAX = 32;
 const GAP_MED_MAX = 64;
 
-function resolveReportIntent(searchQuery: string, classification: { queryMode: QueryMode; intentGoalText: string | null }): DetectedIntent {
+export function resolveReportIntent(searchQuery: string, classification: { queryMode: QueryMode; intentGoalText: string | null }): DetectedIntent {
   if (classification.queryMode !== "place_with_intent") {
     return detectIntentFromQuery(searchQuery);
   }

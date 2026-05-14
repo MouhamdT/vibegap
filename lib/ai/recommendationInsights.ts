@@ -131,7 +131,7 @@ export function buildRecommendationInsights(
   const { mainTradeoff, strongestRisk } = tradeoff(detectedIntent);
 
   const confidenceNote =
-    "Google Places data powers venue details and review signals when available. Social comparison remains mocked in this prototype.";
+    "Google Places data is used when configured. Review signals depend on available Google review signals. Social comparison is illustrative in this prototype.";
 
   return {
     topPickName: top?.place.name ?? `Top pick in ${locationCandidate}`,

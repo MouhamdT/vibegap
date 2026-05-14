@@ -1,6 +1,7 @@
 import { applyAiNarrativeToReport } from "@/lib/ai/applyAiNarrative";
 import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
+import { tryLandmarkGoalRecommendations } from "@/lib/ai/landmarkAnchorRouting";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
 import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
 import { getGoogleCandidatePlaces } from "@/lib/places/googleCandidateSearchProvider";
@@ -48,6 +49,20 @@ export async function POST(request: Request) {
   const intent = detectIntentFromQuery(query);
   const classification = classifyQueryMode(query, intent);
 
+  const landmarkRecommendations = await tryLandmarkGoalRecommendations(query, classification, intent);
+  if (landmarkRecommendations) {
+    return NextResponse.json({
+      mode: "recommendations",
+      detectedIntent: landmarkRecommendations.detectedIntent,
+      locationCandidate: landmarkRecommendations.locationCandidate,
+      nearAnchorName: landmarkRecommendations.nearAnchorName,
+      anchorNote: landmarkRecommendations.anchorNote,
+      candidates: landmarkRecommendations.candidates,
+      sourceLabel: "Google Places · Google review signals when available · Illustrative prototype social signal",
+      recoveryMessage: null,
+    });
+  }
+
   if (classification.queryMode === "goal_search" && classification.recommendationMode && classification.locationCandidate) {
     const candidates = await getGoogleCandidatePlaces(query, classification.locationCandidate);
     const ranked = rankCandidatesByIntent(candidates, intent);
@@ -56,7 +71,7 @@ export async function POST(request: Request) {
       detectedIntent: intent,
       locationCandidate: classification.locationCandidate,
       candidates: ranked.slice(0, 6),
-      sourceLabel: "Google Places data · Google review signals if available · Mock social signals",
+      sourceLabel: "Google Places · Google review signals when available · Illustrative prototype social signal",
       recoveryMessage: null,
     });
   }
@@ -67,7 +82,7 @@ export async function POST(request: Request) {
       detectedIntentLabel: intent.label,
       locationCandidate: null,
       candidates: [],
-      sourceLabel: "Illustrative mock place data · Mock social signals",
+      sourceLabel: "Illustrative venue data · Illustrative prototype social signal",
       recoveryMessage: "Add a city or neighborhood so I can suggest real places. Try: quiet place to study in Copenhagen",
     });
   }

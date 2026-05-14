@@ -122,6 +122,12 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
     `Google reviews were not returned for this place in the current field mask — using mock review signals as fallback.` +
     (hoursHint ? ` Hours (sample): ${hoursHint}.` : "");
 
+  const googleTypes = Array.isArray(googlePlace.types)
+    ? googlePlace.types.filter((t): t is string => typeof t === "string" && t.length > 0)
+    : [];
+  const googlePrimaryType =
+    typeof googlePlace.primaryType === "string" && googlePlace.primaryType.length > 0 ? googlePlace.primaryType : undefined;
+
   return {
     id: `google:${placeId}`,
     name,
@@ -151,5 +157,7 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
     googlePlaceId: placeId,
     isRealPlaceData: true,
     hasRealGoogleReviews,
+    googleTypes: googleTypes.length > 0 ? googleTypes : undefined,
+    googlePrimaryType,
   };
 }
