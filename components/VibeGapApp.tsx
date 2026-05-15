@@ -4,9 +4,15 @@ import { useCallback, useState } from "react";
 import { ExampleSearchChips } from "@/components/ExampleSearchChips";
 import { SearchBar } from "@/components/SearchBar";
 import { CandidateResults } from "@/components/CandidateResults";
+import { CompareResults } from "@/components/CompareResults";
 import { MethodologyAfterResults, MethodologyLandingPreview } from "@/components/MethodologyPanel";
 import { VibeReport } from "@/components/VibeReport";
-import type { RankedCandidate, VibeReport as VibeReportModel, VibecheckResponse } from "@/lib/types/vibecheck";
+import type {
+  CompareResult,
+  RankedCandidate,
+  VibeReport as VibeReportModel,
+  VibecheckResponse,
+} from "@/lib/types/vibecheck";
 
 const FRIENDLY_API_ERROR =
   "Something went wrong while checking places. Your previous results are still shown.";
@@ -119,6 +125,28 @@ function isSingleReportPayload(value: unknown): value is Extract<VibecheckRespon
   return true;
 }
 
+function isComparePayload(value: unknown): value is Extract<VibecheckResponse, { mode: "compare" }> {
+  if (!isRecord(value)) return false;
+  if (value.mode !== "compare") return false;
+  if (typeof value.sourceLabel !== "string") return false;
+  const compareUnknown = value.compare;
+  if (!isRecord(compareUnknown)) return false;
+  if (typeof compareUnknown.searchQueryDisplay !== "string") return false;
+  if (!isRecord(compareUnknown.detectedIntent)) return false;
+  if (typeof compareUnknown.detectedIntent.kind !== "string") return false;
+  if (typeof compareUnknown.detectedIntent.label !== "string") return false;
+  if (typeof compareUnknown.goalDisplay !== "string") return false;
+  if (typeof compareUnknown.placeAName !== "string") return false;
+  if (typeof compareUnknown.placeBName !== "string") return false;
+  if (typeof compareUnknown.winnerPlaceId !== "string") return false;
+  if (typeof compareUnknown.whyWinner !== "string") return false;
+  if (!Array.isArray(compareUnknown.factorRows)) return false;
+  if (!isRecord(compareUnknown.sideA) || !isRecord(compareUnknown.sideB)) return false;
+  if (!isRecord(compareUnknown.sideA.place) || typeof compareUnknown.sideA.place.name !== "string") return false;
+  if (!isRecord(compareUnknown.sideB.place) || typeof compareUnknown.sideB.place.name !== "string") return false;
+  return true;
+}
+
 export function VibeGapApp() {
   const [searchInput, setSearchInput] = useState("");
   const [report, setReport] = useState<VibeReportModel | null>(null);
@@ -130,6 +158,7 @@ export function VibeGapApp() {
     nearAnchorName?: string | null;
     anchorNote?: string | null;
   } | null>(null);
+  const [compare, setCompare] = useState<CompareResult | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -165,6 +194,14 @@ export function VibeGapApp() {
         return;
       }
 
+      if (isComparePayload(raw)) {
+        setCompare(raw.compare);
+        setReport(null);
+        setRecommendations(null);
+        setRecoveryMessage(null);
+        return;
+      }
+
       if (isRecommendationsPayload(raw)) {
         setRecommendations({
           detectedIntent: raw.detectedIntent,
@@ -175,6 +212,7 @@ export function VibeGapApp() {
           anchorNote: typeof raw.anchorNote === "string" ? raw.anchorNote : null,
         });
         setReport(null);
+        setCompare(null);
         setRecoveryMessage(null);
         return;
       }
@@ -182,6 +220,7 @@ export function VibeGapApp() {
       if (isNeedsLocationPayload(raw)) {
         setReport(null);
         setRecommendations(null);
+        setCompare(null);
         setRecoveryMessage(raw.recoveryMessage);
         return;
       }
@@ -194,6 +233,7 @@ export function VibeGapApp() {
 
       setReport(raw.report);
       setRecommendations(null);
+      setCompare(null);
       setRecoveryMessage(null);
     } catch (e) {
       console.warn("[VibeGap] vibecheck network failure", e);
@@ -207,17 +247,17 @@ export function VibeGapApp() {
     setEmptyInputNotice("Tell me the plan first — for example, 'quiet place to study in Tel Aviv'.");
   }, []);
 
-  const useCompactChrome = Boolean(report || recommendations || recoveryMessage);
-  const isRecommendationLayout = Boolean(recommendations);
-  const hasResultsBody = Boolean(recommendations || recoveryMessage || report);
+  const useCompactChrome = Boolean(report || recommendations || compare || recoveryMessage);
+  const isWideResultsLayout = Boolean(recommendations || compare);
+  const hasResultsBody = Boolean(recommendations || compare || recoveryMessage || report);
 
   return (
     <div
-      className={`mx-auto w-full ${isRecommendationLayout ? "max-w-6xl" : "max-w-5xl"} ${useCompactChrome ? "space-y-3 sm:space-y-3" : "space-y-10 sm:space-y-12"}`}
+      className={`mx-auto w-full ${isWideResultsLayout ? "max-w-6xl" : "max-w-5xl"} ${useCompactChrome ? "space-y-3 sm:space-y-3" : "space-y-8 sm:space-y-10"}`}
     >
       {!useCompactChrome ? (
-        <div className="flex flex-col items-center space-y-10 text-center sm:space-y-12">
-          <header className="max-w-2xl space-y-4 px-2 sm:max-w-2xl">
+        <div className="flex flex-col items-center space-y-7 text-center sm:space-y-8">
+          <header className="max-w-2xl space-y-3 px-2 sm:max-w-2xl">
             <h1 className="text-balance text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl sm:leading-tight">
               Find the right place for the plan.
             </h1>
@@ -256,8 +296,8 @@ export function VibeGapApp() {
                 Updating recommendation…
               </p>
             ) : null}
-            <p className="max-w-lg px-3 text-center text-[12px] leading-relaxed text-stone-500 sm:text-[13px]">
-              VibeGap turns a travel plan into a ranked shortlist using venue data, review themes, and goal-weighted scoring.
+            <p className="max-w-lg px-3 text-center text-[12px] leading-relaxed text-stone-500">
+              Turns a travel plan into a ranked shortlist using venue data, review themes, and goal-weighted scoring.
             </p>
             <MethodologyLandingPreview />
           </div>
@@ -328,6 +368,8 @@ export function VibeGapApp() {
                   <li>cheap birthday dinner London</li>
                 </ul>
               </div>
+            ) : compare ? (
+              <CompareResults compare={compare} />
             ) : recommendations ? (
               <CandidateResults
                 key={recommendations.candidates.map((c) => c.place.id).join("\u001f")}

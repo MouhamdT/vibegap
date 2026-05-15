@@ -234,10 +234,56 @@ export interface VibeReport {
   aiNarrativeUsed: boolean;
 }
 
+export interface ComparePlaceSide {
+  place: PlaceData;
+  decision: DecisionSummary;
+  fitScore: number;
+  vibeGapScore: number | null;
+  waitRiskLabel: string;
+  noiseCrowdingLabel: string;
+  priceValueLabel: string;
+  reviewConfidence: DecisionConfidence;
+  mainRisk: string;
+  bestFor: string;
+  avoidIf: string;
+  topReasons: string[];
+  scoreBreakdown: RankedCandidate["scoreBreakdown"];
+  googleResolved: boolean;
+}
+
+export interface CompareFactorRow {
+  factor: string;
+  placeAValue: string;
+  placeBValue: string;
+  advantage: string;
+}
+
+export interface CompareResult {
+  searchQueryDisplay: string;
+  detectedIntent: DetectedIntent;
+  goalDisplay: string;
+  placeAName: string;
+  placeBName: string;
+  sideA: ComparePlaceSide;
+  sideB: ComparePlaceSide;
+  winnerPlaceId: string;
+  whyWinner: string;
+  tradeoff: string;
+  chooseWinnerIf: string;
+  chooseOtherIf: string;
+  factorRows: CompareFactorRow[];
+  partialResolveMessage: string | null;
+}
+
 export type VibecheckResponse =
   | {
       mode: "single_report";
       report: VibeReport;
+    }
+  | {
+      mode: "compare";
+      compare: CompareResult;
+      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.";
     }
   | {
       mode: "recommendations";

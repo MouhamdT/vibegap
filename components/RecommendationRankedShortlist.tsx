@@ -2,12 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
-import type { RankedCandidate } from "@/lib/types/vibecheck";
+import type { DetectedIntent, RankedCandidate } from "@/lib/types/vibecheck";
 
 export type RecommendationRankedShortlistProps = {
   candidates: RankedCandidate[];
   selectedPlaceId: string | null;
   onSelectPlace: (placeId: string | null) => void;
+  detectedIntent: DetectedIntent;
   /** When true, detail renders in a desktop sidebar — no inline panel in rows. */
   desktopSplit: boolean;
 };
@@ -30,6 +31,7 @@ export function RecommendationRankedShortlist({
   candidates,
   selectedPlaceId,
   onSelectPlace,
+  detectedIntent,
   desktopSplit,
 }: RecommendationRankedShortlistProps) {
   const inlinePanelRef = useRef<HTMLDivElement | null>(null);
@@ -84,13 +86,10 @@ export function RecommendationRankedShortlist({
                 <span className="text-stone-300"> · </span>
                 {c.decision.confidence} confidence
               </p>
-              <p className="mt-1.5 text-[12px] leading-snug text-stone-700">{c.oneSentenceReason}</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-stone-500">
-                <span className="font-medium text-stone-600">Driver:</span> {c.scoreDriver}
-                <span className="text-stone-300"> · </span>
-                <span className="font-medium text-stone-600">Best for:</span> {c.bestFor}
+              <p className="mt-1.5 text-[11px] leading-snug text-stone-600">
+                <span className="font-medium text-stone-700">Best for:</span> {c.bestFor}
               </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-stone-500">
+              <p className="mt-0.5 text-[11px] leading-snug text-stone-500">
                 <span className="font-medium text-stone-600">Risk:</span> {c.mainRisk}
               </p>
               <span className="pointer-events-none absolute right-3 top-3 text-[11px] font-medium text-stone-500 underline-offset-2 group-hover:text-stone-800 group-hover:underline sm:right-3.5 sm:top-3.5">
@@ -103,6 +102,7 @@ export function RecommendationRankedShortlist({
                 <RecommendationDrillDownPanel
                   candidate={c}
                   rank={rank}
+                  detectedIntent={detectedIntent}
                   variant="inline"
                   onClose={() => onSelectPlace(null)}
                 />

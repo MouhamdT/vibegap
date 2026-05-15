@@ -1,40 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { PriorityTuningPanel } from "@/components/PriorityTuningPanel";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
 import { RecommendationInsights } from "@/components/RecommendationInsights";
 import { RecommendationRankedShortlist } from "@/components/RecommendationRankedShortlist";
 import { buildRecommendationInsights } from "@/lib/ai/recommendationInsights";
+import {
+  applyPriorityWeightsToCandidates,
+  describePriorityChange,
+  getDefaultPriorityWeights,
+  weightsEqual,
+  type PriorityWeights,
+} from "@/lib/ai/priorityTuning";
 import { useMinWidthLg } from "@/lib/hooks/useMinWidthLg";
-import type { DetectedIntent } from "@/lib/types/vibecheck";
-import type { RankedCandidate } from "@/lib/types/vibecheck";
-
-const HONESTY_LINE = "Uses Google Places and available review signals. Social comparison is illustrative.";
+import type { DetectedIntent, RankedCandidate } from "@/lib/types/vibecheck";
 
 type CandidateResultsProps = {
   detectedIntent: DetectedIntent;
   locationCandidate: string;
   candidates: RankedCandidate[];
-  /** When set, headline uses “near [anchor]” instead of “in [locationCandidate]”. */
   nearAnchorName?: string | null;
   anchorNote?: string | null;
 };
 
-export function CandidateResults({
+export function CandidateResults(props: CandidateResultsProps) {
+  const resetKey = `${props.detectedIntent.kind}|${props.candidates.map((c) => c.place.id).join("\u001f")}`;
+  return <CandidateResultsBody key={resetKey} {...props} />;
+}
+
+function CandidateResultsBody({
   detectedIntent,
   locationCandidate,
   candidates,
   nearAnchorName,
   anchorNote,
 }: CandidateResultsProps) {
-  const insights = buildRecommendationInsights(candidates, detectedIntent, locationCandidate);
-  const isDesktop = useMinWidthLg();
-  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(
-    () => candidates[0]?.place.id ?? null,
-  );
+  const defaultWeights = useMemo(() => getDefaultPriorityWeights(detectedIntent), [detectedIntent]);
+  const [weights, setWeights] = useState<PriorityWeights>(defaultWeights);
+  const lastWeightsRef = useRef<PriorityWeights>(defaultWeights);
+  const [changeMessage, setChangeMessage] = useState<string | null>(null);
+  const [userAdjusted, setUserAdjusted] = useState(false);
 
-  const selectedCandidate = candidates.find((c) => c.place.id === selectedPlaceId) ?? null;
-  const selectedRank = selectedCandidate ? candidates.indexOf(selectedCandidate) + 1 : 0;
+  const rankedCandidates = useMemo(() => {
+    if (weightsEqual(weights, defaultWeights)) return candidates;
+    return applyPriorityWeightsToCandidates(candidates, weights);
+  }, [candidates, weights, defaultWeights]);
+
+  const insights = buildRecommendationInsights(rankedCandidates, detectedIntent, locationCandidate);
+  const isDesktop = useMinWidthLg();
+  const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(() => candidates[0]?.place.id ?? null);
+
+  const activeSelectedId = rankedCandidates.some((c) => c.place.id === selectedPlaceId)
+    ? selectedPlaceId
+    : (rankedCandidates[0]?.place.id ?? null);
+
+  const handleWeightsChange = (next: PriorityWeights) => {
+    if (weightsEqual(next, weights)) return;
+    setUserAdjusted(true);
+    setChangeMessage(describePriorityChange(lastWeightsRef.current, next));
+    lastWeightsRef.current = next;
+    setWeights(next);
+  };
+
+  const handleReset = () => {
+    setWeights(defaultWeights);
+    lastWeightsRef.current = defaultWeights;
+    setChangeMessage(null);
+    setUserAdjusted(false);
+  };
+
+  const selectedCandidate = rankedCandidates.find((c) => c.place.id === activeSelectedId) ?? null;
+  const selectedRank = selectedCandidate ? rankedCandidates.indexOf(selectedCandidate) + 1 : 0;
 
   return (
     <section className="space-y-3" aria-label="Recommended places">
@@ -47,12 +84,20 @@ export function CandidateResults({
         {anchorNote ? (
           <p className="max-w-2xl text-[11px] font-medium leading-relaxed text-stone-600">{anchorNote}</p>
         ) : null}
-        <p className="max-w-2xl text-[11px] leading-relaxed text-stone-500">{HONESTY_LINE}</p>
       </header>
 
       <RecommendationInsights insights={insights} />
 
-      {candidates.length === 0 ? (
+      {rankedCandidates.length > 0 ? (
+        <PriorityTuningPanel
+          weights={weights}
+          onWeightsChange={handleWeightsChange}
+          onReset={handleReset}
+          changeMessage={userAdjusted ? changeMessage : null}
+        />
+      ) : null}
+
+      {rankedCandidates.length === 0 ? (
         <div className="rounded-lg border border-dashed border-stone-200/80 bg-[#faf9f7] px-4 py-8 text-left sm:px-6 sm:py-9">
           <p className="text-sm font-medium leading-relaxed text-stone-800">
             I couldn&apos;t find a confident match. Try adding a city, neighborhood, or landmark.
@@ -69,19 +114,22 @@ export function CandidateResults({
           <div className="min-w-0 space-y-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Ranked shortlist</p>
             <RecommendationRankedShortlist
-              candidates={candidates}
-              selectedPlaceId={selectedPlaceId}
+              candidates={rankedCandidates}
+              selectedPlaceId={activeSelectedId}
               onSelectPlace={setSelectedPlaceId}
+              detectedIntent={detectedIntent}
               desktopSplit={isDesktop}
             />
           </div>
 
           {isDesktop && selectedCandidate ? (
-            <aside
-              className="sticky top-3 max-h-[min(86vh,calc(100vh-4.5rem))] min-h-[10rem] min-w-0 overflow-y-auto lg:mt-0"
-              aria-label="Selected place analysis"
-            >
-              <RecommendationDrillDownPanel candidate={selectedCandidate} rank={selectedRank} variant="sidebar" />
+            <aside className="min-w-0 lg:mt-0 lg:self-start" aria-label="Selected place analysis">
+              <RecommendationDrillDownPanel
+                candidate={selectedCandidate}
+                rank={selectedRank}
+                detectedIntent={detectedIntent}
+                variant="sidebar"
+              />
             </aside>
           ) : null}
         </div>

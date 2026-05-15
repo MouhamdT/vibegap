@@ -63,6 +63,14 @@ function MethodologyInner({ className = "" }: { className?: string }) {
       </div>
 
       <div>
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Custom priorities</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
+          Users can adjust decision weights after search. Rankings update locally using the same available venue and
+          review signals; changing priorities does not fetch new data.
+        </p>
+      </div>
+
+      <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">In your report</p>
         <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-stone-600">
           <li>
@@ -87,14 +95,13 @@ function MethodologyInner({ className = "" }: { className?: string }) {
 export function MethodologyLandingPreview() {
   return (
     <div className="w-full max-w-xl px-1 sm:max-w-2xl">
-      <p className="text-center text-[11px] leading-relaxed text-stone-500">
-        Built as a decision analytics MVP: intent parsing → review signals → weighted scoring → explainable recommendation.
-      </p>
-      <details className="mt-2.5 rounded-lg border border-stone-200/40 bg-white/40 px-3 py-2 text-left sm:px-3.5">
-        <summary className="cursor-pointer list-none text-center text-[11px] font-medium text-stone-700 marker:content-none [&::-webkit-details-marker]:hidden">
-          <span className="underline decoration-stone-300 underline-offset-4 hover:text-stone-900">View methodology</span>
+      <details className="group text-center">
+        <summary className="cursor-pointer list-none text-[11px] font-medium text-stone-500 marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="underline decoration-stone-300 underline-offset-4 transition group-open:text-stone-700 hover:text-stone-800">
+            How scoring works
+          </span>
         </summary>
-        <MethodologyInner className="mt-4 border-t border-stone-100 pt-4" />
+        <MethodologyInner className="mt-4 rounded-lg border border-stone-200/40 bg-white/50 px-3 py-3 text-left sm:px-4" />
       </details>
     </div>
   );

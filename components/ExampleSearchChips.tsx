@@ -3,7 +3,7 @@
 export const EXAMPLE_SEARCH_QUERIES: readonly string[] = [
   "quiet place to study in Tel Aviv",
   "cheap birthday dinner London",
-  "brunch near Trevi Fountain",
+  "Nobu London vs Sketch for birthday dinner",
 ] as const;
 
 export type ExampleSearchChipsProps = {

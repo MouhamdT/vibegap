@@ -1,5 +1,7 @@
 import { applyAiNarrativeToReport } from "@/lib/ai/applyAiNarrative";
+import { buildCompareModeResult } from "@/lib/ai/buildCompareMode";
 import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
+import { parseCompareQuery } from "@/lib/ai/compareQuery";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { tryLandmarkGoalRecommendations } from "@/lib/ai/landmarkAnchorRouting";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
@@ -44,6 +46,16 @@ export async function POST(request: Request) {
   const query = queryRaw.trim();
   if (!query) {
     return NextResponse.json({ error: "Query is required" }, { status: 400 });
+  }
+
+  const compareParsed = parseCompareQuery(query);
+  if (compareParsed) {
+    const compare = await buildCompareModeResult(query, compareParsed);
+    return NextResponse.json({
+      mode: "compare",
+      compare,
+      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
+    });
   }
 
   const intent = detectIntentFromQuery(query);

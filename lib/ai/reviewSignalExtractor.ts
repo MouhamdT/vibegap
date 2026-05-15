@@ -101,10 +101,15 @@ function countMatches(text: string, patterns: readonly RegExp[]): number {
   return count;
 }
 
-function normalizeSnippet(text: string): string {
+function normalizeSnippet(text: string): string | null {
   const t = text.replace(/\s+/g, " ").trim();
-  if (t.length <= 140) return t;
-  return `${t.slice(0, 139).trim()}…`;
+  if (t.length < 48) return null;
+  if (t.length <= 140) {
+    if (/…$|\.\.\.$/.test(t)) return null;
+    if (/[.!?]["']?\s*$/.test(t)) return t;
+    return null;
+  }
+  return null;
 }
 
 export function extractReviewSignalsFromGoogleReviews(reviews: NormalizedGoogleReview[]): ExtractedReviewSignals {
@@ -137,8 +142,14 @@ export function extractReviewSignalsFromGoogleReviews(reviews: NormalizedGoogleR
 
     const hasNeg = /\b(loud|noisy|crowded|packed|wait|line|overpriced|expensive|slow|hard to book)\b/i.test(review.text);
     const hasPos = /\b(great|delicious|friendly|cozy|quiet|quick|worth|wifi|outlet)\b/i.test(review.text);
-    if (hasNeg && complaints.length < 6) complaints.push(normalizeSnippet(review.text));
-    if (hasPos && positives.length < 6) positives.push(normalizeSnippet(review.text));
+    if (hasNeg && complaints.length < 6) {
+      const snippet = normalizeSnippet(review.text);
+      if (snippet) complaints.push(snippet);
+    }
+    if (hasPos && positives.length < 6) {
+      const snippet = normalizeSnippet(review.text);
+      if (snippet) positives.push(snippet);
+    }
   }
 
   const reviewThemes: ReviewTheme[] = THEME_DEFS.map((def) => {
