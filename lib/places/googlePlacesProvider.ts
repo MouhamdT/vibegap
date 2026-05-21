@@ -6,10 +6,10 @@ const PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places";
 
 /** Field mask must be a single comma-separated list with no spaces (Places API New). */
 const GOOGLE_PLACE_SEARCH_FIELD_MASK =
-  "places.id,places.name,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.priceLevel,places.types,places.primaryType,places.primaryTypeDisplayName";
+  "places.id,places.name,places.displayName,places.formattedAddress,places.location,places.rating,places.userRatingCount,places.priceLevel,places.types,places.primaryType,places.primaryTypeDisplayName";
 
 const GOOGLE_PLACE_DETAILS_FIELD_MASK =
-  "id,name,displayName,formattedAddress,rating,userRatingCount,priceLevel,reviews,types,primaryType,primaryTypeDisplayName";
+  "id,name,displayName,formattedAddress,location,rating,userRatingCount,priceLevel,reviews,types,primaryType,primaryTypeDisplayName";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

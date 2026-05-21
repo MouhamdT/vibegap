@@ -2,15 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
-import type { DetectedIntent, RankedCandidate } from "@/lib/types/vibecheck";
+import { shortlistGeographySegment } from "@/lib/format/geographyUi";
+import type { RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 export type RecommendationRankedShortlistProps = {
   candidates: RankedCandidate[];
   selectedPlaceId: string | null;
   onSelectPlace: (placeId: string | null) => void;
-  detectedIntent: DetectedIntent;
   /** When true, detail renders in a desktop sidebar — no inline panel in rows. */
   desktopSplit: boolean;
+  geography?: RecommendationGeography | null;
 };
 
 function decisionTone(label: RankedCandidate["decision"]["label"]) {
@@ -31,8 +32,8 @@ export function RecommendationRankedShortlist({
   candidates,
   selectedPlaceId,
   onSelectPlace,
-  detectedIntent,
   desktopSplit,
+  geography,
 }: RecommendationRankedShortlistProps) {
   const inlinePanelRef = useRef<HTMLDivElement | null>(null);
 
@@ -47,6 +48,7 @@ export function RecommendationRankedShortlist({
         const rank = idx + 1;
         const isSelected = selectedPlaceId === c.place.id;
         const showInlinePanel = !desktopSplit && isSelected;
+        const hideSecondaryMeta = desktopSplit || showInlinePanel;
 
         return (
           <div
@@ -54,17 +56,18 @@ export function RecommendationRankedShortlist({
             role="listitem"
             className={`overflow-hidden rounded-lg border transition-colors ${
               isSelected
-                ? "border-stone-400/70 bg-stone-50/90 pl-0 shadow-none ring-1 ring-stone-200/40"
+                ? "border-stone-500/55 bg-stone-50/95 shadow-sm ring-2 ring-stone-300/45"
                 : "border-stone-200/70 bg-white hover:border-stone-300 hover:bg-stone-50/50"
             }`}
           >
             <button
               type="button"
+              aria-current={isSelected ? "true" : undefined}
               aria-expanded={desktopSplit ? isSelected : showInlinePanel}
               onClick={() => rowActivate(c.place.id, desktopSplit, isSelected, onSelectPlace)}
               className={`group relative w-full cursor-pointer rounded-lg text-left outline-none transition-colors select-text focus-visible:ring-2 focus-visible:ring-stone-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f7f6f4] ${
                 isSelected
-                  ? "border-l-[3px] border-l-stone-800 pl-[calc(0.75rem-3px)] sm:pl-[calc(0.875rem-3px)]"
+                  ? "border-l-[3px] border-l-stone-900 pl-[calc(0.75rem-3px)] sm:pl-[calc(0.875rem-3px)]"
                   : "border-l-[3px] border-l-transparent pl-3 sm:pl-3.5"
               } px-3 py-2.5 sm:px-3.5 sm:py-2.5`}
             >
@@ -83,15 +86,28 @@ export function RecommendationRankedShortlist({
                 <span className="font-medium text-stone-800">{"$".repeat(c.place.priceLevel)}</span>
                 <span className="text-stone-300"> · </span>
                 Fit {c.fitScore}
+                {(() => {
+                  const seg = shortlistGeographySegment(c, geography);
+                  return seg ? (
+                    <>
+                      <span className="text-stone-300"> · </span>
+                      <span className="text-stone-600">{seg}</span>
+                    </>
+                  ) : null;
+                })()}
                 <span className="text-stone-300"> · </span>
                 {c.decision.confidence} confidence
               </p>
-              <p className="mt-1.5 text-[11px] leading-snug text-stone-600">
-                <span className="font-medium text-stone-700">Best for:</span> {c.bestFor}
-              </p>
-              <p className="mt-0.5 text-[11px] leading-snug text-stone-500">
-                <span className="font-medium text-stone-600">Risk:</span> {c.mainRisk}
-              </p>
+              {hideSecondaryMeta ? null : (
+                <>
+                  <p className="mt-1.5 text-[11px] leading-snug text-stone-600">
+                    <span className="font-medium text-stone-700">Best for:</span> {c.bestFor}
+                  </p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-stone-500">
+                    <span className="font-medium text-stone-600">Risk:</span> {c.mainRisk}
+                  </p>
+                </>
+              )}
               <span className="pointer-events-none absolute right-3 top-3 text-[11px] font-medium text-stone-500 underline-offset-2 group-hover:text-stone-800 group-hover:underline sm:right-3.5 sm:top-3.5">
                 {desktopSplit ? "Details" : isSelected ? "Hide" : "Details"}
               </span>
@@ -102,8 +118,8 @@ export function RecommendationRankedShortlist({
                 <RecommendationDrillDownPanel
                   candidate={c}
                   rank={rank}
-                  detectedIntent={detectedIntent}
                   variant="inline"
+                  geography={geography}
                   onClose={() => onSelectPlace(null)}
                 />
               </div>

@@ -10,6 +10,7 @@ import { VibeReport } from "@/components/VibeReport";
 import type {
   CompareResult,
   RankedCandidate,
+  RecommendationGeography,
   VibeReport as VibeReportModel,
   VibecheckResponse,
 } from "@/lib/types/vibecheck";
@@ -19,6 +20,22 @@ const FRIENDLY_API_ERROR =
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function parseRecommendationGeography(raw: Record<string, unknown>): RecommendationGeography | undefined {
+  const g = raw.geography;
+  if (!isRecord(g)) return undefined;
+  if (typeof g.searchAreaLabel !== "string") return undefined;
+  const near = g.nearAnchorDisplayName;
+  const alat = g.anchorLatitude;
+  const alng = g.anchorLongitude;
+  return {
+    searchAreaLabel: g.searchAreaLabel,
+    nearAnchorDisplayName: typeof near === "string" && near.trim() ? near : null,
+    anchorLatitude: typeof alat === "number" && Number.isFinite(alat) ? alat : null,
+    anchorLongitude: typeof alng === "number" && Number.isFinite(alng) ? alng : null,
+    hasApproximateDistances: g.hasApproximateDistances === true,
+  };
 }
 
 function isRecommendationsPayload(value: unknown): value is Extract<VibecheckResponse, { mode: "recommendations" }> {
@@ -157,6 +174,7 @@ export function VibeGapApp() {
     sourceLabel: string;
     nearAnchorName?: string | null;
     anchorNote?: string | null;
+    geography?: RecommendationGeography | null;
   } | null>(null);
   const [compare, setCompare] = useState<CompareResult | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
@@ -210,6 +228,7 @@ export function VibeGapApp() {
           sourceLabel: raw.sourceLabel,
           nearAnchorName: typeof raw.nearAnchorName === "string" ? raw.nearAnchorName : null,
           anchorNote: typeof raw.anchorNote === "string" ? raw.anchorNote : null,
+          geography: parseRecommendationGeography(raw as Record<string, unknown>),
         });
         setReport(null);
         setCompare(null);
@@ -378,6 +397,7 @@ export function VibeGapApp() {
                 candidates={recommendations.candidates}
                 nearAnchorName={recommendations.nearAnchorName ?? undefined}
                 anchorNote={recommendations.anchorNote ?? undefined}
+                geography={recommendations.geography ?? undefined}
               />
             ) : report ? (
               <VibeReport report={report} />

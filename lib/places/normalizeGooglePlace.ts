@@ -28,6 +28,10 @@ export interface GooglePlaceApi {
   authorAttribution?: {
     displayName?: string;
   };
+  location?: {
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 function localizedText(t: GoogleLocalizedText | undefined): string {
@@ -128,6 +132,16 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
   const googlePrimaryType =
     typeof googlePlace.primaryType === "string" && googlePlace.primaryType.length > 0 ? googlePlace.primaryType : undefined;
 
+  let latitude: number | undefined;
+  let longitude: number | undefined;
+  const loc = googlePlace.location;
+  if (loc && typeof loc.latitude === "number" && typeof loc.longitude === "number") {
+    if (Number.isFinite(loc.latitude) && Number.isFinite(loc.longitude)) {
+      latitude = loc.latitude;
+      longitude = loc.longitude;
+    }
+  }
+
   return {
     id: `google:${placeId}`,
     name,
@@ -159,5 +173,6 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
     hasRealGoogleReviews,
     googleTypes: googleTypes.length > 0 ? googleTypes : undefined,
     googlePrimaryType,
+    ...(latitude !== undefined && longitude !== undefined ? { latitude, longitude } : {}),
   };
 }

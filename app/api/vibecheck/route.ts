@@ -6,6 +6,7 @@ import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { tryLandmarkGoalRecommendations } from "@/lib/ai/landmarkAnchorRouting";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
 import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
+import { enrichRecommendationGeography } from "@/lib/geo/enrichRecommendationGeography";
 import { getGoogleCandidatePlaces } from "@/lib/places/googleCandidateSearchProvider";
 import { connection, NextResponse } from "next/server";
 
@@ -63,13 +64,20 @@ export async function POST(request: Request) {
 
   const landmarkRecommendations = await tryLandmarkGoalRecommendations(query, classification, intent);
   if (landmarkRecommendations) {
+    const { candidates, geography } = await enrichRecommendationGeography({
+      candidates: landmarkRecommendations.candidates,
+      locationCandidate: landmarkRecommendations.locationCandidate,
+      nearAnchorName: landmarkRecommendations.nearAnchorName,
+      landmarkAnchorPlace: landmarkRecommendations.anchorPlace,
+    });
     return NextResponse.json({
       mode: "recommendations",
       detectedIntent: landmarkRecommendations.detectedIntent,
       locationCandidate: landmarkRecommendations.locationCandidate,
       nearAnchorName: landmarkRecommendations.nearAnchorName,
       anchorNote: landmarkRecommendations.anchorNote,
-      candidates: landmarkRecommendations.candidates,
+      geography,
+      candidates,
       sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
       recoveryMessage: null,
     });
@@ -78,18 +86,25 @@ export async function POST(request: Request) {
   if (classification.queryMode === "goal_search" && classification.recommendationMode && classification.locationCandidate) {
     const rankIntent = classification.recommendationRankIntent ?? intent;
     const candidates = await getGoogleCandidatePlaces(query, classification.locationCandidate);
-    const ranked = rankCandidatesByIntent(candidates, rankIntent);
+    const ranked = rankCandidatesByIntent(candidates, rankIntent).slice(0, 6);
     const nearAnchor = classification.recommendationNearAnchorName;
     const anchorNote = nearAnchor
       ? `Using ${nearAnchor} as the area anchor.`
       : `Searching in ${classification.locationCandidate}.`;
+    const { candidates: rankedWithGeo, geography } = await enrichRecommendationGeography({
+      candidates: ranked,
+      locationCandidate: classification.locationCandidate,
+      nearAnchorName: nearAnchor,
+      landmarkAnchorPlace: null,
+    });
     return NextResponse.json({
       mode: "recommendations",
       detectedIntent: rankIntent,
       locationCandidate: classification.locationCandidate,
       nearAnchorName: nearAnchor,
       anchorNote,
-      candidates: ranked.slice(0, 6),
+      geography,
+      candidates: rankedWithGeo,
       sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
       recoveryMessage: null,
     });

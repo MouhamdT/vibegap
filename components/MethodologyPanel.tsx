@@ -63,10 +63,11 @@ function MethodologyInner({ className = "" }: { className?: string }) {
       </div>
 
       <div>
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Custom priorities</p>
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Tune ranking</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
-          Users can adjust decision weights after search. Rankings update locally using the same available venue and
-          review signals; changing priorities does not fetch new data.
+          After search, use <span className="font-medium text-stone-800">Tune ranking</span> to nudge quiet, wait, value, and
+          confidence weights. Rankings update locally using the same venue and review signals; changing sliders does not
+          fetch new data.
         </p>
       </div>
 

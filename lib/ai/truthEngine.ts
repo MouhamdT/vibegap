@@ -1,3 +1,4 @@
+import { buildSinglePlaceGeography } from "@/lib/geo/buildSinglePlaceGeography";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
@@ -150,6 +151,8 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
     avoidIf,
   );
 
+  const geography = await buildSinglePlaceGeography(searchQuery, classification, place);
+
   return {
     searchQueryDisplay: formatSearchQueryForDisplay(searchQuery),
     queryMode: classification.queryMode,
@@ -173,6 +176,7 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
     generatedAt: new Date().toISOString(),
     narrativeSource: "rules",
     aiNarrativeUsed: false,
+    ...(geography ? { geography } : {}),
   };
 }
 

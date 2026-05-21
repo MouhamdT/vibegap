@@ -50,6 +50,32 @@ export interface RankedCandidate {
     score: number;
     explanation: string;
   }[];
+  /** Straight-line distance from the search anchor when both have coordinates. */
+  distanceFromAnchorMeters?: number | null;
+  /** Optional transparent note; does not change ranking scores. */
+  geographySignalLine?: string | null;
+}
+
+export interface RecommendationGeography {
+  searchAreaLabel: string;
+  nearAnchorDisplayName: string | null;
+  anchorLatitude: number | null;
+  anchorLongitude: number | null;
+  /** True when at least one candidate has a computed straight-line distance. */
+  hasApproximateDistances: boolean;
+}
+
+/** Single-place geography for distance copy and future map (V24). */
+export interface SinglePlaceGeography {
+  searchAreaLabel: string | null;
+  nearAnchorDisplayName: string | null;
+  placeLatitude: number | null;
+  placeLongitude: number | null;
+  anchorLatitude: number | null;
+  anchorLongitude: number | null;
+  distanceFromAnchorMeters: number | null;
+  /** When the venue has coordinates but no anchor distance is shown. */
+  mapPreviewNote: string | null;
 }
 
 export interface RecommendationScoringWeight {
@@ -113,6 +139,10 @@ export interface PlaceData {
   googleTypes?: readonly string[];
   /** Google Places `primaryType` when available. */
   googlePrimaryType?: string;
+  /** WGS84 latitude when returned by Google Places (for distance / future map). */
+  latitude?: number;
+  /** WGS84 longitude when returned by Google Places (for distance / future map). */
+  longitude?: number;
 }
 
 export type SocialSource = "tiktok" | "instagram" | "youtube";
@@ -232,6 +262,8 @@ export interface VibeReport {
   narrativeSource: NarrativeSource;
   /** True when an LLM successfully supplied polished copy merged into this report. */
   aiNarrativeUsed: boolean;
+  /** Geography / distance context for future map (V24); optional. */
+  geography?: SinglePlaceGeography | null;
 }
 
 export interface ComparePlaceSide {
@@ -293,6 +325,8 @@ export type VibecheckResponse =
       nearAnchorName?: string | null;
       /** Short note when a landmark/area was used as the geographic anchor for nearby picks. */
       anchorNote?: string | null;
+      /** Parsed geography for distances and future map layers. */
+      geography?: RecommendationGeography;
       candidates: RankedCandidate[];
       sourceLabel: string;
       recoveryMessage: null;

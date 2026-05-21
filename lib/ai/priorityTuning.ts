@@ -17,6 +17,11 @@ export const PRIORITY_KEYS = [
   "reviewConfidence",
 ] as const;
 
+/** Sliders shown in Tune ranking UI; atmosphere stays at goal defaults internally. */
+export const TUNABLE_PRIORITY_KEYS = ["quietCrowd", "lowWait", "budgetValue", "reviewConfidence"] as const;
+
+export type TunablePriorityKey = (typeof TUNABLE_PRIORITY_KEYS)[number];
+
 export type PriorityKey = (typeof PRIORITY_KEYS)[number];
 
 export type PriorityWeights = Record<PriorityKey, number>;
@@ -27,6 +32,21 @@ export const PRIORITY_LABELS: Record<PriorityKey, string> = {
   budgetValue: "Budget / value",
   atmosphere: "Atmosphere / occasion",
   reviewConfidence: "Review confidence",
+};
+
+export const TUNABLE_SLIDER_LABELS: Record<TunablePriorityKey, string> = {
+  quietCrowd: "Quiet",
+  lowWait: "Low wait",
+  budgetValue: "Value",
+  reviewConfidence: "Confidence",
+};
+
+/** Short tooltips for slider labels (native `title`). */
+export const TUNABLE_SLIDER_HINTS: Record<TunablePriorityKey, string> = {
+  quietCrowd: "Low crowd / low noise",
+  lowWait: "Shorter waits, less queue friction",
+  budgetValue: "Budget / price fit",
+  reviewConfidence: "Stronger review signal depth",
 };
 
 export type PriorityDimensions = Record<PriorityKey, number>;
@@ -199,7 +219,7 @@ export function weightsEqual(a: PriorityWeights, b: PriorityWeights): boolean {
 }
 
 export function describePriorityChange(previous: PriorityWeights, next: PriorityWeights): string {
-  const deltas = PRIORITY_KEYS.map((key) => ({
+  const deltas = TUNABLE_PRIORITY_KEYS.map((key) => ({
     key,
     delta: next[key] - previous[key],
     label: PRIORITY_LABELS[key],
@@ -208,7 +228,7 @@ export function describePriorityChange(previous: PriorityWeights, next: Priority
     .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 
   if (deltas.length === 0) {
-    return "Ranking updated based on your priority mix using available review signals.";
+    return "Ranking updated locally.";
   }
 
   const top = deltas[0]!;

@@ -1,15 +1,14 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { PriorityTuningPanel } from "@/components/PriorityTuningPanel";
 import {
   applyPriorityWeightsToCompare,
-  describePriorityChange,
   getDefaultPriorityWeights,
   weightsEqual,
   type PriorityWeights,
 } from "@/lib/ai/priorityTuning";
-import { ReviewRealityPanel } from "@/components/ReviewRealityPanel";
+import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
 import { buildCompareReviewSummary } from "@/lib/ai/reviewReality";
 import type { CompareFactorRow, ComparePlaceSide, CompareResult, DetectedIntent } from "@/lib/types/vibecheck";
 
@@ -27,12 +26,10 @@ function ComparePlaceCard({
   side,
   label,
   isWinner,
-  detectedIntent,
 }: {
   side: ComparePlaceSide;
   label: "A" | "B";
   isWinner: boolean;
-  detectedIntent: DetectedIntent;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -115,7 +112,7 @@ function ComparePlaceCard({
             </details>
           ) : null}
 
-          <ReviewRealityPanel place={side.place} intent={detectedIntent} variant="compact" />
+          <ReviewEvidencePanel place={side.place} variant="compact" />
         </div>
       ) : null}
     </article>
@@ -130,8 +127,6 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
   const baselineWinnerId = compare.winnerPlaceId;
   const defaultWeights = useMemo(() => getDefaultPriorityWeights(compare.detectedIntent), [compare.detectedIntent]);
   const [weights, setWeights] = useState<PriorityWeights>(defaultWeights);
-  const lastWeightsRef = useRef<PriorityWeights>(defaultWeights);
-  const [changeMessage, setChangeMessage] = useState<string | null>(null);
   const [userAdjusted, setUserAdjusted] = useState(false);
 
   const displayCompare = useMemo(() => {
@@ -140,17 +135,14 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
   }, [compare, weights, defaultWeights]);
 
   const handleWeightsChange = (next: PriorityWeights) => {
-    if (weightsEqual(next, weights)) return;
+    const merged = { ...next, atmosphere: defaultWeights.atmosphere };
+    if (weightsEqual(merged, weights)) return;
     setUserAdjusted(true);
-    setChangeMessage(describePriorityChange(lastWeightsRef.current, next));
-    lastWeightsRef.current = next;
-    setWeights(next);
+    setWeights(merged);
   };
 
   const handleReset = () => {
     setWeights(defaultWeights);
-    lastWeightsRef.current = defaultWeights;
-    setChangeMessage(null);
     setUserAdjusted(false);
   };
 
@@ -183,18 +175,31 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
 
   return (
     <section className="space-y-4" aria-label="Compare places">
-      <header className="space-y-1.5 border-b border-stone-200/50 pb-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">Compare mode</p>
-        <h2 className="text-balance text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">
-          Best choice for {compare.goalDisplay.toLowerCase()}
-        </h2>
-        <p className="max-w-2xl text-[12px] leading-relaxed text-stone-600">
-          Comparing {compare.placeAName} and {compare.placeBName} using venue data, review signals, and goal-weighted
-          scoring.
-        </p>
-        {compare.partialResolveMessage ? (
-          <p className="text-[11px] font-medium text-amber-900/90">{compare.partialResolveMessage}</p>
-        ) : null}
+      <header className="border-b border-stone-200/50 pb-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">Compare mode</p>
+            <h2 className="text-balance text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">
+              Best choice for {compare.goalDisplay.toLowerCase()}
+            </h2>
+            <p className="max-w-2xl text-[12px] leading-relaxed text-stone-600">
+              Comparing {compare.placeAName} and {compare.placeBName} using venue data, review signals, and goal-weighted
+              scoring.
+            </p>
+            {compare.partialResolveMessage ? (
+              <p className="text-[11px] font-medium text-amber-900/90">{compare.partialResolveMessage}</p>
+            ) : null}
+          </div>
+          <PriorityTuningPanel
+            weights={weights}
+            defaultWeights={defaultWeights}
+            onWeightsChange={handleWeightsChange}
+            onReset={handleReset}
+            rankingNote={userAdjusted ? "Ranking updated locally." : null}
+            winnerUpdatedNote={winnerUpdatedNote}
+            prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
+          />
+        </div>
       </header>
 
       <div className="rounded-lg border border-stone-200/70 bg-[#faf9f7] p-4 sm:p-5">
@@ -208,26 +213,16 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
         </p>
       </div>
 
-      <PriorityTuningPanel
-        weights={weights}
-        onWeightsChange={handleWeightsChange}
-        onReset={handleReset}
-        changeMessage={userAdjusted ? changeMessage : null}
-        winnerUpdatedNote={winnerUpdatedNote}
-      />
-
       <div className="grid gap-3 lg:grid-cols-2">
         <ComparePlaceCard
           side={displayCompare.sideA}
           label="A"
           isWinner={displayCompare.winnerPlaceId === displayCompare.sideA.place.id}
-          detectedIntent={compare.detectedIntent}
         />
         <ComparePlaceCard
           side={displayCompare.sideB}
           label="B"
           isWinner={displayCompare.winnerPlaceId === displayCompare.sideB.place.id}
-          detectedIntent={compare.detectedIntent}
         />
       </div>
 

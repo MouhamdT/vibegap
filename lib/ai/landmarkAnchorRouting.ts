@@ -4,7 +4,7 @@ import { resolveReportIntent } from "@/lib/ai/truthEngine";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { getGoogleCandidatePlaces } from "@/lib/places/googleCandidateSearchProvider";
 import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
-import type { DetectedIntent, RankedCandidate } from "@/lib/types/vibecheck";
+import type { DetectedIntent, PlaceData, RankedCandidate } from "@/lib/types/vibecheck";
 
 /** Food, drink, or stay venues: analyzing the matched place as a restaurant/hotel is appropriate. */
 const FOOD_OR_HOSPITALITY_VENUE_TYPES = new Set([
@@ -99,6 +99,8 @@ export type LandmarkRecommendationResult = {
   locationCandidate: string;
   nearAnchorName: string;
   anchorNote: string;
+  /** Resolved landmark / area place (includes coordinates when Places returns them). */
+  anchorPlace: PlaceData;
   candidates: RankedCandidate[];
 };
 
@@ -148,6 +150,7 @@ export async function tryLandmarkGoalRecommendations(
     locationCandidate,
     nearAnchorName,
     anchorNote,
+    anchorPlace: resolved.place,
     candidates: ranked,
   };
 }

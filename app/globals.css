@@ -24,3 +24,63 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* Tune ranking — subtle focus for range sliders (avoid heavy default Chrome focus box) */
+.vibegap-tune-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.vibegap-tune-range:focus {
+  outline: none;
+}
+
+.vibegap-tune-range:focus-visible {
+  outline: none;
+}
+
+.vibegap-tune-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: rgb(41 37 36);
+  border: 1px solid rgb(231 229 228);
+  margin-top: -5px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.vibegap-tune-range:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 0 0 2px rgb(255 255 255),
+    0 0 0 4px rgb(214 211 209 / 0.85);
+}
+
+.vibegap-tune-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: rgb(231 229 228);
+}
+
+.vibegap-tune-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: rgb(41 37 36);
+  border: 1px solid rgb(231 229 228);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+
+.vibegap-tune-range:focus-visible::-moz-range-thumb {
+  box-shadow:
+    0 0 0 2px rgb(255 255 255),
+    0 0 0 4px rgb(214 211 209 / 0.85);
+}
+
+.vibegap-tune-range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: rgb(231 229 228);
+}

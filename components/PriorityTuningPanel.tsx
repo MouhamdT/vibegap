@@ -1,97 +1,154 @@
 "use client";
 
-import { useId, useState } from "react";
-import { PRIORITY_KEYS, PRIORITY_LABELS, type PriorityWeights } from "@/lib/ai/priorityTuning";
+import { useEffect, useId, useRef, useState } from "react";
+import {
+  TUNABLE_PRIORITY_KEYS,
+  TUNABLE_SLIDER_HINTS,
+  TUNABLE_SLIDER_LABELS,
+  type PriorityWeights,
+} from "@/lib/ai/priorityTuning";
+
+function mergeAtmosphere(next: PriorityWeights, defaultWeights: PriorityWeights): PriorityWeights {
+  return { ...next, atmosphere: defaultWeights.atmosphere };
+}
 
 type PriorityTuningPanelProps = {
   weights: PriorityWeights;
+  defaultWeights: PriorityWeights;
   onWeightsChange: (next: PriorityWeights) => void;
   onReset: () => void;
-  changeMessage: string | null;
+  /** Shown only after the user has changed a slider (keep short). */
+  rankingNote: string | null;
   winnerUpdatedNote?: string | null;
+  /** Small hint under the button (e.g. Detected vs Custom priorities). */
+  prioritiesSubLabel?: string;
 };
 
 export function PriorityTuningPanel({
   weights,
+  defaultWeights,
   onWeightsChange,
   onReset,
-  changeMessage,
+  rankingNote,
   winnerUpdatedNote,
+  prioritiesSubLabel,
 }: PriorityTuningPanelProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const el = rootRef.current;
+      if (!el || el.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [open]);
+
+  const handleSliderChange = (key: (typeof TUNABLE_PRIORITY_KEYS)[number], value: number) => {
+    onWeightsChange(mergeAtmosphere({ ...weights, [key]: value }, defaultWeights));
+  };
 
   return (
-    <div className="rounded-lg border border-stone-200/55 bg-stone-50/35 px-3 py-2.5 sm:px-3.5">
-      {!open ? (
+    <div
+      ref={rootRef}
+      className="flex w-full min-w-0 flex-col gap-0.5 self-start sm:max-w-[22.5rem] sm:items-end lg:ml-auto"
+    >
+      <div className="relative w-full min-w-0 sm:w-fit sm:max-w-full sm:shrink-0 sm:self-end">
         <button
           type="button"
-          onClick={() => setOpen(true)}
-          className="text-[11px] font-medium text-stone-600 underline decoration-stone-300 underline-offset-4 transition hover:text-stone-900"
+          aria-expanded={open}
+          aria-controls={open ? panelId : undefined}
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex w-fit max-w-full shrink-0 items-center gap-1 rounded-md border border-stone-200/70 bg-white px-2.5 py-1.5 text-[11px] font-medium text-stone-800 shadow-sm transition hover:border-stone-300 hover:bg-stone-50/90"
         >
-          Adjust priorities
+          <span>Tune ranking</span>
+          <span className="text-stone-400" aria-hidden>
+            {open ? "▴" : "▾"}
+          </span>
         </button>
-      ) : (
-        <div className="space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-500">Adjust priorities</p>
-                <p className="mt-0.5 text-[10px] leading-relaxed text-stone-500">
-                  Based on available review signals. Rankings update locally; social comparison remains illustrative.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="shrink-0 text-[10px] font-medium text-stone-500 hover:text-stone-800"
-              >
-                Close
-              </button>
-            </div>
 
-            <div id={panelId} className="space-y-2.5">
-              {PRIORITY_KEYS.map((key) => (
-                <div key={key} className="space-y-1">
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-stone-700">
-                    <label htmlFor={`${panelId}-${key}`} className="min-w-0 font-medium">
-                      {PRIORITY_LABELS[key]}
-                    </label>
-                    <span className="shrink-0 tabular-nums text-stone-600">{weights[key]}</span>
-                  </div>
-                  <input
-                    id={`${panelId}-${key}`}
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={weights[key]}
-                    onChange={(e) => onWeightsChange({ ...weights, [key]: Number(e.target.value) })}
-                    className="h-1 w-full cursor-pointer accent-stone-700"
-                  />
-                </div>
-              ))}
-            </div>
+        {prioritiesSubLabel ? (
+          <p className="mt-0.5 text-[9px] font-medium text-stone-500 sm:text-right">{prioritiesSubLabel}</p>
+        ) : null}
 
+        {open ? (
+          <div
+            id={panelId}
+            className="mt-2 w-full min-w-0 max-w-full rounded-lg border border-stone-200/70 bg-white p-2 shadow-md sm:p-2.5 lg:absolute lg:right-0 lg:top-[calc(100%+8px)] lg:z-[80] lg:mt-0 lg:w-[min(22.5rem,calc(100vw-2rem))] lg:shadow-lg"
+            role="dialog"
+            aria-label="Tune ranking"
+          >
+          <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-stone-500">Tune ranking</p>
             <button
               type="button"
-              onClick={onReset}
-              className="text-[11px] font-medium text-stone-600 underline decoration-stone-300 underline-offset-4 hover:text-stone-900"
+              onClick={() => setOpen(false)}
+              className="shrink-0 text-[10px] font-medium text-stone-500 hover:text-stone-800"
             >
-              Reset to detected goal
+              Close
             </button>
+          </div>
 
-            {changeMessage ? (
-              <p className="text-[11px] leading-relaxed text-stone-600" role="status">
-                {changeMessage}
-              </p>
-            ) : null}
-            {winnerUpdatedNote ? (
-              <p className="text-[11px] font-medium leading-relaxed text-stone-700" role="status">
-                {winnerUpdatedNote}
-              </p>
-            ) : null}
-        </div>
-      )}
+          <p className="mt-1.5 text-[9px] leading-snug text-stone-500">
+            Rankings update locally. Social comparison is illustrative.
+          </p>
+
+          <div className="mt-1.5 space-y-1.5">
+            {TUNABLE_PRIORITY_KEYS.map((key) => (
+              <div key={key} className="space-y-0">
+                <div className="flex items-center justify-between gap-2 text-[10px] text-stone-700">
+                  <label
+                    htmlFor={`${panelId}-${key}`}
+                    className="min-w-0 font-medium"
+                    title={TUNABLE_SLIDER_HINTS[key]}
+                  >
+                    {TUNABLE_SLIDER_LABELS[key]}
+                  </label>
+                  <span className="shrink-0 tabular-nums text-stone-500">{weights[key]}</span>
+                </div>
+                <input
+                  id={`${panelId}-${key}`}
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={weights[key]}
+                  onChange={(e) => handleSliderChange(key, Number(e.target.value))}
+                  className="vibegap-tune-range h-1 w-full min-w-0 cursor-pointer accent-stone-700"
+                  title={TUNABLE_SLIDER_HINTS[key]}
+                />
+              </div>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              onReset();
+              setOpen(false);
+            }}
+            className="mt-2 text-[10px] font-medium text-stone-600 underline decoration-stone-300 underline-offset-2 hover:text-stone-900"
+          >
+            Reset to detected goal
+          </button>
+
+          {rankingNote ? (
+            <p className="mt-1.5 border-t border-stone-100 pt-1.5 text-[9px] leading-snug text-stone-500" role="status">
+              {rankingNote}
+            </p>
+          ) : null}
+          {winnerUpdatedNote ? (
+            <p className="mt-1 text-[9px] font-medium leading-snug text-stone-600" role="status">
+              {winnerUpdatedNote}
+            </p>
+          ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
