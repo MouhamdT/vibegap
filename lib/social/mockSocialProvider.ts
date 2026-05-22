@@ -17,7 +17,7 @@ const SOURCES: SocialSource[] = ["tiktok", "instagram", "youtube", "tiktok", "in
 export type MockSocialContentMode = "calm" | "lively";
 
 /**
- * Which mock clip pack is used — must stay in sync with `getMockSocialForPlace`
+ * Which sample framing pack is used — must stay in sync with `getMockSocialForPlace`
  * so scoring can reference the same “visible cards” logic as the UI.
  */
 export function getMockSocialContentMode(place: PlaceData): MockSocialContentMode {
@@ -32,7 +32,7 @@ export function getMockSocialContentMode(place: PlaceData): MockSocialContentMod
 }
 
 /**
- * Mock social hype for a place — deterministic from place + name.
+ * Deterministic sample framing cards for a place (illustrative vignettes — not live feeds).
  */
 export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
   const seed = djb2(`${place.id}|${place.name}|${place.category}|${place.mockGoalIntentKind ?? ""}`);

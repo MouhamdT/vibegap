@@ -195,7 +195,7 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
           <div className="min-w-0 flex-1 space-y-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">Compare mode</p>
-            <h2 className="text-balance text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">
+            <h2 className="max-w-full text-lg font-semibold leading-snug tracking-tight text-stone-950 sm:text-xl">
               Best choice for {compare.goalDisplay.toLowerCase()}
             </h2>
             <p className="max-w-2xl text-[12px] leading-relaxed text-stone-600">

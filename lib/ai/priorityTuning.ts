@@ -385,7 +385,7 @@ function buildFactorRows(
       ),
     },
     {
-      factor: "VibeGap (hype mismatch)",
+      factor: "Signal gap",
       placeAValue: vibeA,
       placeBValue: vibeB,
       advantage:

@@ -1,6 +1,8 @@
 import type { VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { singlePlaceGeographyLines } from "@/lib/format/geographyUi";
+import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
+import { signalGapRationaleHeading, signalGapScoreCaption, signalGapScoreLabel } from "@/lib/format/signalGapUi";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
 import { VibeReportDecisionMap } from "@/components/VibeReportDecisionMap";
 import { ScoreCard } from "@/components/ScoreCard";
@@ -9,9 +11,6 @@ import { VisualGrid } from "@/components/VisualGrid";
 export type VibeReportProps = {
   report: VibeReportModel | null;
 };
-
-const REPORT_DATA_HONESTY =
-  "Based on available Google review signals. Social comparison is illustrative.";
 
 function TagList({ title, items, variant }: { title: string; items: string[]; variant: "best" | "avoid" }) {
   const chip =
@@ -44,6 +43,11 @@ export function VibeReport({ report }: VibeReportProps) {
   }
 
   const { score, detectedIntent, quickVerdict: q, decision } = report;
+
+  const gapLabel = signalGapScoreLabel(report.queryMode);
+  const gapCaption = signalGapScoreCaption(report.queryMode);
+  const gapRationaleTitle = signalGapRationaleHeading(report.queryMode);
+
   const placeNameForRow =
     report.placeNameCandidate !== null && report.placeNameCandidate !== ""
       ? formatSearchQueryForDisplay(report.placeNameCandidate)
@@ -113,9 +117,10 @@ export function VibeReport({ report }: VibeReportProps) {
           <p className="mt-1 text-xs leading-relaxed text-stone-600">{score.intentFitVerdict}</p>
         </div>
         <div className="rounded-lg bg-[#faf9f7] px-3 py-3 ring-1 ring-stone-200/40 sm:px-3.5 sm:py-3.5">
-          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">VibeGap</p>
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">{gapLabel}</p>
           <p className="mt-0.5 text-2xl font-semibold tabular-nums text-stone-950">{score.vibeGapScore}</p>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">{score.verdict}</p>
+          <p className="mt-1.5 text-[10px] leading-snug text-stone-500">{gapCaption}</p>
         </div>
       </section>
 
@@ -131,7 +136,7 @@ export function VibeReport({ report }: VibeReportProps) {
         </ul>
       </section>
 
-      <ReviewEvidencePanel place={report.place} showDataHonesty={false} />
+      <ReviewEvidencePanel place={report.place} showDataHonesty />
 
       <details className="group rounded-lg bg-white/95 ring-1 ring-stone-200/50">
         <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-stone-900 outline-none marker:content-none sm:px-3.5 [&::-webkit-details-marker]:hidden">
@@ -146,7 +151,7 @@ export function VibeReport({ report }: VibeReportProps) {
             <TagList title="Avoid if" items={report.avoidIf} variant="avoid" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            <ScoreCard label="VibeGap" value={score.vibeGapScore} hint={score.verdict} emphasis />
+            <ScoreCard label={gapLabel} value={score.vibeGapScore} hint={score.verdict} emphasis />
             <ScoreCard label="Intent fit" value={score.intentFitScore} hint={score.intentFitVerdict} emphasis />
             <ScoreCard
               label="Tourist density"
@@ -171,7 +176,7 @@ export function VibeReport({ report }: VibeReportProps) {
           </div>
           <div className="grid gap-2.5 lg:grid-cols-2">
             <div className="rounded-md bg-stone-50/80 px-2.5 py-2 ring-1 ring-stone-100/90">
-              <h3 className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">VibeGap rationale</h3>
+              <h3 className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">{gapRationaleTitle}</h3>
               <ul className="mt-1.5 space-y-1.5 text-sm leading-relaxed text-stone-600">
                 {score.vibeGapExplanationBullets.map((b) => (
                   <li key={b} className="border-l border-stone-200 pl-2">
@@ -197,7 +202,7 @@ export function VibeReport({ report }: VibeReportProps) {
       <details className="group rounded-lg bg-white/95 ring-1 ring-stone-200/50">
         <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-stone-900 outline-none marker:content-none sm:px-3.5 [&::-webkit-details-marker]:hidden">
           <span className="flex items-center justify-between gap-2">
-            <span>Full analysis</span>
+            <span>Goal cues & review context</span>
             <span className="text-[10px] font-normal text-stone-400 group-open:hidden">Open</span>
           </span>
         </summary>
@@ -211,7 +216,7 @@ export function VibeReport({ report }: VibeReportProps) {
         </div>
       </details>
 
-      <p className="text-[9px] leading-snug text-stone-400">{REPORT_DATA_HONESTY}</p>
+      <p className="text-[9px] leading-snug text-stone-400">{PRODUCT_HONESTY_FULL}</p>
     </article>
   );
 }

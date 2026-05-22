@@ -123,7 +123,7 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
   const hasRealGoogleReviews = extracted.hasRealGoogleReviews;
 
   const fallbackRecentReviewSummary =
-    `Google reviews were not returned for this place in the current field mask — using mock review signals as fallback.` +
+    `Google reviews were not returned for this place in the current field mask — using illustrative review-theme fallback.` +
     (hoursHint ? ` Hours (sample): ${hoursHint}.` : "");
 
   const googleTypes = Array.isArray(googlePlace.types)
@@ -163,10 +163,10 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
     recentReviewSummary: hasRealGoogleReviews ? extracted.recentReviewSummary : fallbackRecentReviewSummary,
     complaints: hasRealGoogleReviews
       ? extracted.complaints
-      : ["Google review text was unavailable for this fetch; mock review signals are being used."],
+      : ["Google review text was unavailable for this fetch; illustrative review-theme fallback is in use."],
     positives: hasRealGoogleReviews
       ? extracted.positives
-      : ["Place profile and ratings come from Google Places; review signal details are mocked in this fallback."],
+      : ["Place profile and ratings come from Google Places; review-theme detail uses an illustrative fallback here."],
     dataSource: "google",
     googlePlaceId: placeId,
     isRealPlaceData: true,

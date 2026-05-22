@@ -1,7 +1,10 @@
 import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
+import { augmentPlaceQueryWithInheritedCity, extractTrailingCityFromPlaceQuery } from "@/lib/ai/comparePlaceContext";
 import type { ParsedCompareQuery } from "@/lib/ai/compareQuery";
+import { classifyQueryMode } from "@/lib/ai/queryMode";
 import {
   buildMockVibeReport,
+  detectIntentFromQuery,
   resolveReportIntent,
 } from "@/lib/ai/truthEngine";
 import type {
@@ -168,7 +171,7 @@ function buildFactorRows(
       ),
     },
     {
-      factor: "VibeGap (hype mismatch)",
+      factor: "Signal gap",
       placeAValue: vibeA,
       placeBValue: vibeB,
       advantage:
@@ -204,21 +207,32 @@ function buildVerdictCopy(
   return { whyWinner, tradeoff, chooseWinnerIf, chooseOtherIf };
 }
 
+/** User-facing compare headline fragment (not internal enum labels). */
+function formatCompareGoalDisplay(goalText: string, intent: DetectedIntent): string {
+  const g = goalText.trim();
+  if (g.length >= 2 && g.toLowerCase() !== "your visit") {
+    return g[0]!.toUpperCase() + g.slice(1);
+  }
+  return intent.label;
+}
+
 export async function buildCompareModeResult(
   searchQuery: string,
   parsed: ParsedCompareQuery,
 ): Promise<CompareResult> {
   const goalQuery = `${parsed.placeA} for ${parsed.goalText}`;
-  const detectedIntent = resolveReportIntent(goalQuery, {
-    queryMode: "place_with_intent",
-    intentGoalText: parsed.goalText,
-  });
+  const intentInitial = detectIntentFromQuery(goalQuery);
+  const classification = classifyQueryMode(goalQuery, intentInitial);
+  const detectedIntent = resolveReportIntent(goalQuery, classification);
+
+  const inheritedCity = extractTrailingCityFromPlaceQuery(parsed.placeA);
+  const placeBForSearch = augmentPlaceQueryWithInheritedCity(parsed.placeB, inheritedCity);
 
   const hasGoogleKey = Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim());
 
   const [builtA, builtB] = await Promise.all([
     buildSide(parsed.placeA, parsed.goalText, detectedIntent),
-    buildSide(parsed.placeB, parsed.goalText, detectedIntent),
+    buildSide(placeBForSearch, parsed.goalText, detectedIntent),
   ]);
 
   let partialResolveMessage: string | null = null;
@@ -236,7 +250,7 @@ export async function buildCompareModeResult(
   const winner = winnerKey === "a" ? sideA : sideB;
   const other = winnerKey === "a" ? sideB : sideA;
 
-  const goalDisplay = detectedIntent.label;
+  const goalDisplay = formatCompareGoalDisplay(parsed.goalText, detectedIntent);
   const copy = buildVerdictCopy(winner, other, goalDisplay);
 
   return {

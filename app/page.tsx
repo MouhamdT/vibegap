@@ -1,4 +1,5 @@
 import { VibeGapApp } from "@/components/VibeGapApp";
+import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 
 export default function Home() {
   return (
@@ -20,7 +21,7 @@ export default function Home() {
 
       <footer className="border-t border-stone-200/50 bg-[#faf9f7]/80 py-5 text-center">
         <p className="mx-auto max-w-xl px-4 text-[11px] leading-relaxed text-stone-500 sm:text-xs">
-          Uses Google Places and available review signals. Social comparison is illustrative.
+          {PRODUCT_HONESTY_FULL}
         </p>
       </footer>
     </div>

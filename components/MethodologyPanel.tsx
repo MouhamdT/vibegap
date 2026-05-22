@@ -3,7 +3,7 @@
 const STEPS: readonly { title: string; body: string }[] = [
   {
     title: "Intent parsing",
-    body: "Converts the search into a visit goal — quiet study, budget dinner, low-wait visit, brunch, vegan, special occasion, and similar patterns.",
+    body: "Converts the search into a visit goal, place, city, or landmark anchor.",
   },
   {
     title: "Candidate generation",
@@ -19,7 +19,7 @@ const STEPS: readonly { title: string; body: string }[] = [
   },
   {
     title: "Decision output",
-    body: "Maps fit score and signal confidence into GO, MAYBE, or SKIP with a clear tradeoff explanation.",
+    body: "Maps fit score, tradeoffs, and confidence into GO, MAYBE, or SKIP with a short explanation.",
   },
 ] as const;
 
@@ -34,7 +34,7 @@ function MethodologyInner({ className = "" }: { className?: string }) {
   return (
     <div className={`space-y-4 text-left ${className}`}>
       <div>
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">How VibeGap scores a place</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-stone-500">How scoring works</h3>
         <ol className="mt-2.5 space-y-2 border-l border-stone-200/80 pl-3">
           {STEPS.map((step, i) => (
             <li key={step.title} className="text-[12px] leading-snug text-stone-700">
@@ -50,7 +50,7 @@ function MethodologyInner({ className = "" }: { className?: string }) {
       <div className="rounded-md border border-stone-200/60 bg-stone-50/40 px-3 py-3">
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Weighted scoring</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
-          VibeGap does not rank by star rating alone. The model adjusts for your goal — for example, a 4.7 café can rank lower for studying if reviews
+          This product does not rank by star rating alone. Weights shift by goal — for example, a 4.7 café can rank lower for studying if reviews
           repeatedly mention noise, crowds, or limited seating.
         </p>
         <ul className="mt-3 space-y-2 border-t border-stone-200/50 pt-3 text-[11px] leading-snug text-stone-600">
@@ -60,6 +60,14 @@ function MethodologyInner({ className = "" }: { className?: string }) {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div>
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Recommendation style</p>
+        <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
+          Reliable, Balanced, and Discovery modes adjust how much the ranking favors established review coverage versus less
+          obvious but goal-matching options. This is a local re-rank on the same candidates — it does not fetch new data.
+        </p>
       </div>
 
       <div>
@@ -78,7 +86,7 @@ function MethodologyInner({ className = "" }: { className?: string }) {
             <span className="font-medium text-stone-800">Intent Fit</span> — goal match from review-derived signals.
           </li>
           <li>
-            <span className="font-medium text-stone-800">VibeGap</span> — gap between illustrative social comparison and review-backed signals.
+            <span className="font-medium text-stone-800">Signal gap</span> — mismatch between on-card goal cues and review-backed themes.
           </li>
           <li>
             <span className="font-medium text-stone-800">Confidence</span> — strength of available Google review signals.

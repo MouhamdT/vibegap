@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { MutableRefObject } from "react";
 import { loadGoogleMapsScript } from "@/lib/maps/loadGoogleMapsScript";
+import { computeLandmarkSearchContext, landmarkFetchKey } from "@/lib/maps/computeLandmarkSearchContext";
+import { getDistanceMeters } from "@/lib/geo/distance";
+import type { MapLandmarkPlace } from "@/lib/maps/mapLandmarkTypes";
 import type { DecisionMapPin } from "@/lib/maps/decisionMapModel";
 import { isAnchorPinId } from "@/lib/maps/decisionMapModel";
 
@@ -110,11 +114,20 @@ function recommendationCandidatePopupHtml(pin: DecisionMapPin): string {
     ? `<div style="margin-top:5px;font-size:11px;color:#57534e;line-height:1.35">${riskLine}</div>`
     : "";
 
+  const roleRaw = pin.shortlistRole?.trim();
+  const roleLine = roleRaw ? escapeHtml(roleRaw) : "";
+
+  const actionLine = pin.isSelected
+    ? `<div style="margin-top:8px;font-size:11px;color:#444;font-weight:600">Selected</div>`
+    : `<div style="margin-top:8px;font-size:11px;color:#78716c">View details — pick this row in the shortlist.</div>`;
+
   return `<div style="max-width:280px;font:12px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#292524;padding:2px 4px 2px 0">
   ${titleLine}
   <div style="margin-top:6px;font-size:11px;color:#444;line-height:1.35">${decisionFit}</div>
+  ${roleLine ? `<div style="margin-top:6px;font-size:10px;font-weight:600;color:#57534e">${roleLine}</div>` : ""}
   ${distBlock}
   ${riskBlock}
+  ${actionLine}
 </div>`;
 }
 
@@ -157,6 +170,86 @@ function popupHtmlForPin(pin: DecisionMapPin, mapMode: MapMode): string {
   if (mapMode === "single") return singlePlacePopupHtml(pin);
   if (mapMode === "compare") return comparePlacePopupHtml(pin);
   return recommendationCandidatePopupHtml(pin);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function landmarkPopupHtml(lm: MapLandmarkPlace, anchor: DecisionMapPin | undefined): string {
+  const near =
+    anchor &&
+    getDistanceMeters(
+      { latitude: anchor.lat, longitude: anchor.lng },
+      { latitude: lm.lat, longitude: lm.lng },
+    ) < 160;
+  const tag = near ? "Landmark" : "Nearby landmark";
+  return `<div style="max-width:260px;font:12px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#292524;padding:2px 4px 2px 0">
+  <div style="font-weight:700;letter-spacing:-0.01em">${escapeHtml(lm.name)}</div>
+  <div style="margin-top:6px;font-size:11px;color:#78716c">${escapeHtml(tag)}</div>
+</div>`;
+}
+
+function parseLandmarksResponse(raw: unknown): MapLandmarkPlace[] {
+  if (!isRecord(raw)) return [];
+  const list = raw.landmarks;
+  if (!Array.isArray(list)) return [];
+  const out: MapLandmarkPlace[] = [];
+  for (const x of list) {
+    if (!isRecord(x)) continue;
+    const googlePlaceId = typeof x.googlePlaceId === "string" ? x.googlePlaceId.trim() : "";
+    const name = typeof x.name === "string" ? x.name.trim() : "";
+    const lat = x.lat;
+    const lng = x.lng;
+    if (!googlePlaceId || !name || typeof lat !== "number" || typeof lng !== "number") continue;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    out.push({ googlePlaceId, name, lat, lng });
+  }
+  return out;
+}
+
+/** Drop landmarks that sit on top of ranked venue pins or duplicate the anchor. */
+function filterLandmarksForMap(landmarks: MapLandmarkPlace[], pins: DecisionMapPin[]): MapLandmarkPlace[] {
+  const anchor = pins.find((p) => p.kind === "anchor");
+  const venues = pins.filter((p) => p.kind !== "anchor");
+  const minSepM = 55;
+  return landmarks.filter((lm) => {
+    if (anchor) {
+      const dn = anchor.name.trim().toLowerCase();
+      const ln = lm.name.trim().toLowerCase();
+      const dAnchor = getDistanceMeters(
+        { latitude: anchor.lat, longitude: anchor.lng },
+        { latitude: lm.lat, longitude: lm.lng },
+      );
+      if (dn === ln && dAnchor < 140) return false;
+    }
+    for (const v of venues) {
+      const d = getDistanceMeters(
+        { latitude: v.lat, longitude: v.lng },
+        { latitude: lm.lat, longitude: lm.lng },
+      );
+      if (d < minSepM) return false;
+    }
+    return true;
+  });
+}
+
+function styleLandmarkPill(pill: HTMLElement): void {
+  pill.style.minWidth = "22px";
+  pill.style.height = "22px";
+  pill.style.padding = "0 4px";
+  pill.style.borderRadius = "6px";
+  pill.style.display = "flex";
+  pill.style.alignItems = "center";
+  pill.style.justifyContent = "center";
+  pill.style.fontFamily = "ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif";
+  pill.style.fontSize = "9px";
+  pill.style.fontWeight = "600";
+  pill.style.background = "#f5f5f4";
+  pill.style.color = "#78716c";
+  pill.style.border = "1px dashed #d6d3d1";
+  pill.style.boxShadow = "0 4px 10px rgba(28,25,23,0.08)";
+  pill.textContent = "⌖";
 }
 
 type MapsModule = {
@@ -208,7 +301,23 @@ type MapRuntime = {
   map: MapInstance;
   infoWindow: InfoWindowInstance;
   markers: Map<string, MarkerHandle>;
+  AdvancedMarkerCtor: AdvancedMarkerCtor;
 };
+
+type LandmarkMarkerHandle = { listener: { remove: () => void }; marker: AdvancedMarkerLike };
+
+function disposeLandmarkMarkers(handlesRef: MutableRefObject<LandmarkMarkerHandle[]>): void {
+  const handles = handlesRef.current;
+  for (const h of handles) {
+    try {
+      h.listener.remove();
+    } catch {
+      // ignore
+    }
+    h.marker.map = null;
+  }
+  handles.length = 0;
+}
 
 function syncMarkerPills(rt: MapRuntime | null, pinList: DecisionMapPin[], mode: MapMode): void {
   if (!rt) return;
@@ -250,17 +359,43 @@ export function DecisionMapModal({
 
   const runtimeRef = useRef<MapRuntime | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [mapSession, setMapSession] = useState(0);
+  const [showLandmarks, setShowLandmarks] = useState(false);
+  const [landmarkHint, setLandmarkHint] = useState<string | null>(null);
+  const landmarkHandlesRef = useRef<LandmarkMarkerHandle[]>([]);
+  const landmarkCacheRef = useRef<{ key: string; items: MapLandmarkPlace[] } | null>(null);
 
   const geometryKey = useMemo(
     () => JSON.stringify(pins.map((p) => ({ id: p.id, k: p.kind, lat: p.lat, lng: p.lng }))),
     [pins],
   );
 
+  const selectedRecommendationVenueId = useMemo(() => {
+    if (mapMode !== "recommendation") return null;
+    const sel = pins.find((p) => p.kind === "candidate" && p.isSelected);
+    return sel?.id ?? null;
+  }, [pins, mapMode]);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const rt = runtimeRef.current;
+    if (!rt || mapMode !== "recommendation" || !selectedRecommendationVenueId) return;
+    const h = rt.markers.get(selectedRecommendationVenueId);
+    if (!h) return;
+    const pinLive = pinsRef.current.find((p) => p.id === selectedRecommendationVenueId);
+    if (!pinLive || pinLive.kind === "anchor") return;
+    rt.infoWindow.setContent(popupHtmlForPin(pinLive, mapMode));
+    rt.infoWindow.open({ map: rt.map, anchor: h.marker });
+  }, [open, mapMode, selectedRecommendationVenueId, mapSession, pins]);
+
   /* Google Maps runtime is imperative; ref assignments are intentional. */
   /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     if (!open) {
       runtimeRef.current = null;
+      disposeLandmarkMarkers(landmarkHandlesRef);
+      setLandmarkHint(null);
+      landmarkCacheRef.current = null;
       return;
     }
 
@@ -340,7 +475,7 @@ export function DecisionMapModal({
           markers.set(pin.id, { id: pin.id, marker, pill });
         }
 
-        runtimeRef.current = { map, infoWindow, markers };
+        runtimeRef.current = { map, infoWindow, markers, AdvancedMarkerCtor: AdvancedMarkerElement };
         syncMarkerPills(runtimeRef.current, pinsRef.current, mapModeRef.current);
 
         const pts = pinsSnapshot.map((p) => ({ lat: p.lat, lng: p.lng }));
@@ -354,6 +489,7 @@ export function DecisionMapModal({
         }
 
         cleanups.push(() => infoWindow.close());
+        setMapSession((s) => s + 1);
       } catch {
         if (!cancelled) setLoadError("Map could not load. The ranked list is still available.");
       }
@@ -363,6 +499,7 @@ export function DecisionMapModal({
 
     return () => {
       cancelled = true;
+      disposeLandmarkMarkers(landmarkHandlesRef);
       cleanups.forEach((fn) => {
         try {
           fn();
@@ -374,6 +511,114 @@ export function DecisionMapModal({
       host.innerHTML = "";
     };
   }, [open, apiKey, mapId, mapMode, geometryKey]);
+
+  const prevOpenRef = useRef(false);
+  useLayoutEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setShowLandmarks(pinsRef.current.some((p) => p.kind === "anchor"));
+      setLandmarkHint(null);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      disposeLandmarkMarkers(landmarkHandlesRef);
+      setLandmarkHint(null);
+      landmarkCacheRef.current = null;
+      return;
+    }
+
+    if (!showLandmarks) {
+      disposeLandmarkMarkers(landmarkHandlesRef);
+      setLandmarkHint(null);
+      return;
+    }
+
+    const rt = runtimeRef.current;
+    if (!rt) return;
+
+    const pinsLive = pinsRef.current;
+    const ctx = computeLandmarkSearchContext(pinsLive);
+    if (!ctx) {
+      disposeLandmarkMarkers(landmarkHandlesRef);
+      setLandmarkHint(null);
+      return;
+    }
+
+    const key = landmarkFetchKey(ctx);
+    const anchor = pinsLive.find((p) => p.kind === "anchor");
+
+    const exclude = new Set<string>();
+    for (const p of pinsLive) {
+      const gid = p.googlePlaceId?.trim();
+      if (gid) exclude.add(gid);
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      disposeLandmarkMarkers(landmarkHandlesRef);
+
+      let items: MapLandmarkPlace[];
+      const cached = landmarkCacheRef.current;
+      if (cached?.key === key) {
+        items = cached.items;
+      } else {
+        setLandmarkHint("Loading nearby landmarks…");
+        try {
+          const res = await fetch("/api/map-landmarks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              center: ctx.center,
+              radiusMeters: ctx.radiusMeters,
+              maxResults: 8,
+              excludeGooglePlaceIds: [...exclude],
+            }),
+          });
+          if (cancelled) return;
+          if (!res.ok) {
+            setLandmarkHint("Nearby landmarks unavailable.");
+            return;
+          }
+          const raw: unknown = await res.json();
+          if (cancelled) return;
+          items = filterLandmarksForMap(parseLandmarksResponse(raw), pinsLive);
+          landmarkCacheRef.current = { key, items };
+        } catch {
+          if (!cancelled) setLandmarkHint("Nearby landmarks unavailable.");
+          return;
+        }
+      }
+
+      if (cancelled) return;
+
+      const { map, infoWindow, AdvancedMarkerCtor: Ctor } = rt;
+      for (const lm of items) {
+        const { root, pill } = createPinShell();
+        styleLandmarkPill(pill);
+        const marker = new Ctor({
+          map,
+          position: { lat: lm.lat, lng: lm.lng },
+          content: root,
+          gmpClickable: true,
+        });
+        const listener = marker.addListener("click", () => {
+          infoWindow.setContent(landmarkPopupHtml(lm, anchor));
+          infoWindow.open({ map, anchor: marker });
+        });
+        landmarkHandlesRef.current.push({ listener, marker });
+      }
+      setLandmarkHint(null);
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, showLandmarks, mapSession, geometryKey]);
   /* eslint-enable react-hooks/immutability */
 
   if (!open) return null;
@@ -412,7 +657,25 @@ export function DecisionMapModal({
             <div className="absolute inset-0 z-[1] flex items-center justify-center bg-stone-100 px-6 text-center">
               <p className="max-w-md text-sm leading-relaxed text-stone-700">{loadError}</p>
             </div>
-          ) : null}
+          ) : (
+            <div className="pointer-events-none absolute left-2 top-2 z-[2] flex max-w-[min(100%-1rem,280px)] flex-col gap-1.5">
+              <label className="pointer-events-auto flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200/90 bg-white/95 px-2.5 py-1.5 text-[11px] font-medium text-stone-700 shadow-sm backdrop-blur-sm">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-stone-300 text-stone-800"
+                  checked={showLandmarks}
+                  onChange={(e) => setShowLandmarks(e.target.checked)}
+                  aria-label="Show nearby landmarks on the map for context"
+                />
+                <span title="Map context: nearby landmarks for orientation only">Landmarks</span>
+              </label>
+              {landmarkHint ? (
+                <p className="rounded-md border border-stone-200/80 bg-white/90 px-2 py-1 text-[10px] leading-snug text-stone-500 shadow-sm backdrop-blur-sm">
+                  {landmarkHint}
+                </p>
+              ) : null}
+            </div>
+          )}
           <div ref={mapElRef} className="h-full w-full" />
         </div>
 
@@ -421,6 +684,7 @@ export function DecisionMapModal({
             <p className="whitespace-pre-line text-[12px] font-medium leading-snug text-stone-800">{footerPrimaryLine}</p>
           ) : null}
           <p className="text-[10px] leading-snug text-stone-400">Distances are approximate.</p>
+          <p className="text-[10px] leading-snug text-stone-400">Nearby landmarks are map context only.</p>
         </footer>
       </div>
     </div>

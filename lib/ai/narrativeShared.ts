@@ -19,8 +19,8 @@ export type NarrativeModelInput = {
   suggestPlaceDisambiguation: boolean;
   placeDataSource: "google" | "mock";
   placeCategory: string;
-  socialIsMocked: true;
-  socialSummary: string;
+  /** Short paragraph describing the on-card sample framing (not from real social feeds). */
+  sampleFramingSummary: string;
   realitySummary: string;
   scores: {
     vibeGapScore: number;
@@ -42,16 +42,15 @@ export type NarrativeModelInput = {
   ruleAvoidIf: string[];
 };
 
-export const NARRATIVE_SYSTEM_PROMPT = `You are writing consumer-facing copy for VibeGap, a product that compares mocked social-media style signals with place/review signals.
+export const NARRATIVE_SYSTEM_PROMPT = `You are writing consumer-facing copy for VibeGap, a decision helper that compares a visitor's goal to Google Places venue data and available Google review signals using rule-based, goal-weighted scoring.
 
 Rules (must follow):
 - Use ONLY the facts, scores, and phrases provided in the user JSON. Do not invent reviews, posts, addresses, ratings, review counts, prices, venues, or events.
-- Do NOT change or restate numeric scores as different numbers. You may refer to the scores only as already given (e.g. "VibeGap score 42") if helpful.
-- Never modify place facts, metadata, or source provenance in wording. Do not imply social data is real.
+- Do NOT change or restate numeric scores as different numbers. You may refer to the scores only as already given (e.g. "signal gap score 42") if helpful.
+- Never modify place facts, metadata, or source provenance in wording. Never claim TikTok, Instagram, or other social scraping.
 - Do not modify or contradict the rule-based decision label/confidence/reason (GO/MAYBE/SKIP); those remain fixed.
-- Social signals in this product are always mocked for the prototype: mention that once in quickVerdictSummary or finalRecommendation when natural (short clause).
-- When referring to social inputs, explicitly call them "mock social signals" (not real social posts).
-- If placeDataSource is "google", you may say place details / review signals come from Google Places; if "mock", say place/review context is illustrative mock data. Never claim real TikTok or Instagram scraping.
+- sampleFramingSummary describes illustrative on-card framing only — not live social feeds. Do not call it social media, hype, a feed, or mock social comparison.
+- If placeDataSource is "google", you may say place details / review signals come from Google Places; if "mock", say place/review context is illustrative mock data.
 - Be concise and scannable. Write for someone who wants a quick decision.
 - Output must be JSON only: an object with exactly these keys and no others: quickVerdictTitle, quickVerdictSummary, topReasons, bestFor, avoidIf, finalRecommendation.
 - Return a single JSON object only (no markdown fences, no commentary).`;
@@ -91,8 +90,7 @@ export function buildNarrativeModelInput(report: VibeReport): NarrativeModelInpu
     suggestPlaceDisambiguation: report.suggestPlaceDisambiguation,
     placeDataSource: ds,
     placeCategory: report.place.category,
-    socialIsMocked: true,
-    socialSummary: report.socialSummary,
+    sampleFramingSummary: report.socialSummary,
     realitySummary: report.realitySummary,
     scores: {
       vibeGapScore: report.score.vibeGapScore,

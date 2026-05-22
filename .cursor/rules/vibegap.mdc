@@ -3,15 +3,13 @@ description: VibeGap project architecture and coding rules
 alwaysApply: true
 ---
 
-You are helping build VibeGap, a full-stack AI web app that compares social-media hype with real-world place review data.
+You are helping build VibeGap, a full-stack AI web app that scores **goal fit vs. review-backed venue signals** using Google Places data and available Google review themes.
 
 Core idea:
-VibeGap checks whether a place's online "vibe" matches reality.
+VibeGap surfaces the gap between your **visit goal** and what **venue + review signals** suggest — using intent parsing, rule-based / goal-weighted scoring, and explainable decisions.
 
 Example:
-Social media says: "quiet hidden gem cafe"
-Google reviews say: "crowded, loud, overpriced"
-VibeGap shows the mismatch.
+You want a quiet study block, but review themes skew loud and wait-heavy — VibeGap flags the mismatch.
 
 Tech stack:
 - Next.js App Router
@@ -19,24 +17,24 @@ Tech stack:
 - Tailwind CSS
 - Server-side API routes
 - Modular provider architecture
-- Mock data first, real APIs later
+- Mock/illustrative fallbacks where live data is missing
 
 Main product flow:
-1. User searches for a place.
-2. App fetches or mocks place data.
-3. App fetches or mocks social hype data.
-4. Truth engine compares hype vs reality.
-5. App returns a VibeGap Report.
+1. User searches for a place or describes a goal + location.
+2. App resolves venue(s) via Google Places (or illustrative fallback when needed).
+3. App extracts available review themes/signals and optional sample framing cards.
+4. Truth engine scores goal fit, risk, signal gap, and confidence with transparent rules.
+5. App returns a VibeGap Report (GO / MAYBE / SKIP) with evidence and tradeoffs.
 
 Important rules:
 - Do not build everything at once.
 - Build in small versions.
-- Use mock data before real APIs.
+- Use illustrative/mock fallbacks only when a real fetch cannot populate fields.
 - Keep external API calls server-side only.
 - Never expose API keys to the browser.
 - Keep shared types in lib/types.
 - Keep place providers in lib/places.
-- Keep social providers in lib/social.
+- Keep sample framing helpers in lib/social (deterministic cards — not live feeds).
 - Keep scoring/AI logic in lib/ai.
 - Avoid using any.
 - Prefer clean, readable, beginner-friendly code.
@@ -77,4 +75,4 @@ Product style:
 - Minimal but impressive
 - Mobile-friendly
 
-Do not add authentication, database, real TikTok scraping, OpenAI, or Google Places yet.
+Do not add authentication, database, real TikTok scraping, client-exposed API keys, or client-side Google Places calls.

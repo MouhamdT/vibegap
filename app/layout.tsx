@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "VibeGap — Goal-first place decisions",
   description:
-    "Decision analytics MVP: intent parsing, Google Places venue signals, mocked social comparison, deterministic scoring, and explainable summaries.",
+    "Decision analytics MVP: intent parsing, Google Places venue data, available Google review signals, rule-based goal-weighted scoring, and explainable summaries.",
 };
 
 export default function RootLayout({

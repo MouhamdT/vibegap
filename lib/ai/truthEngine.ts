@@ -1,5 +1,6 @@
 import { buildSinglePlaceGeography } from "@/lib/geo/buildSinglePlaceGeography";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
+import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
 import { getMockSocialContentMode, getMockSocialForPlace } from "@/lib/social/mockSocialProvider";
@@ -16,7 +17,7 @@ import type {
   VibeReport,
 } from "@/lib/types/vibecheck";
 
-/** VibeGap Score: low = social and reviews tell a similar story; high = they conflict. */
+/** Signal gap score: low = goal-cue text and reviews align; high = they diverge. */
 const GAP_LOW_MAX = 32;
 const GAP_MED_MAX = 64;
 
@@ -60,7 +61,7 @@ function formatPlaceIntentGoalDisplay(goalFragment: string, intent: DetectedInte
   }
 }
 
-/** True when review themes/snippets are sourced from Google Places (social remains mocked). */
+/** True when review themes/snippets are sourced from Google Places. */
 function usesGoogleReviewSignals(place: PlaceData): boolean {
   return place.dataSource === "google" && Boolean(place.hasRealGoogleReviews);
 }
@@ -70,9 +71,9 @@ function usesGoogleReviewSignals(place: PlaceData): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a full mock report. Scoring is split into:
- * - VibeGap: social narrative vs. review narrative (never uses “user goal” rules).
- * - Intent Fit: inferred query goal vs. what reviews + posts imply about the visit.
+ * Builds a full place report. Scoring is split into:
+ * - Signal gap: goal-cue text vs. review narrative (never uses “user goal” rules).
+ * - Intent Fit: inferred query goal vs. what reviews + framing cues imply about the visit.
  */
 export async function buildMockVibeReport(searchQuery: string): Promise<VibeReport> {
   const intentInitial = detectIntentFromQuery(searchQuery);
@@ -341,6 +342,18 @@ export function detectIntentFromQuery(rawQuery: string): DetectedIntent {
     };
   }
 
+  const specialOccasionMeal =
+    /\b(birthday|anniversary)\b/.test(query) &&
+    /\b(dinner|lunch|brunch|breakfast|meal|celebration|party|drinks|reservation|evening)\b/.test(query);
+  if (specialOccasionMeal) {
+    return {
+      kind: "luxury",
+      label: "Special-occasion meal",
+      confidence: "medium",
+      matchedSignals: ["occasion", "meal context"],
+    };
+  }
+
   const budgetCelebration = matchBudgetCelebrationQuery(query);
   if (budgetCelebration.matched) {
     return {
@@ -404,7 +417,7 @@ function collectHits(query: string, keywords: readonly string[]): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// VibeGap: social vs. reviews only
+// Signal gap: goal-cue text vs. reviews
 // ---------------------------------------------------------------------------
 
 type MismatchSignals = {
@@ -418,7 +431,7 @@ type MismatchSignals = {
   expensiveReality: boolean;
   waitReality: boolean;
   highReviewVolume: boolean;
-  /** Social clips and reviews both describe a busy / loud / wait-heavy room. */
+  /** goal-cue text cards and reviews both describe a busy / loud / wait-heavy room. */
   socialReviewAgreeBusy: boolean;
   vibeGapBullets: string[];
   /** Points driving VibeGap up — excludes “agreement” bullets (score stays low when aligned). */
@@ -426,8 +439,8 @@ type MismatchSignals = {
 };
 
 /**
- * Compares **visible** mock social cards to review text. Uses the same calm vs. lively pack as the UI
- * (`getMockSocialContentMode`) so rationale never claims “calm posts” when the lively pack is showing.
+ * Compares **visible** goal-cue text cards to review text. Uses the same calm vs. lively pack as the UI
+ * (`getMockSocialContentMode`) so rationale never claims “calm cards” when the lively pack is showing.
  */
 function buildSocialReviewMismatch(
   posts: SocialPost[],
@@ -463,20 +476,20 @@ function buildSocialReviewMismatch(
 
   if (socialReviewAgreeBusy) {
     vibeGapBullets.push(
-      `Evidence: this draw uses the lively mock clip pack (tags such as ${tagSample}), and reviews echo busy or wait-heavy language (${reviewSample}) — social and reviews agree, so VibeGap stays low.`,
+      `Evidence: this draw uses the lively goal-cue pack (tags such as ${tagSample}), and reviews echo busy or wait-heavy language (${reviewSample}) — signals align, so the gap score stays low.`,
     );
   }
 
   if (hiddenGemHype && highReviewVolume) {
     vibeGapBullets.push(
-      `Evidence: mock social signals still use discovery language (“${snippet(socialBlob, "hidden gem|underrated|secret")}”), while ${place.reviewCount.toLocaleString()} reviews imply the venue is already mainstream.`,
+      `Evidence: goal-cue text still uses discovery-style language (“${snippet(socialBlob, "hidden gem|underrated|secret")}”), while ${place.reviewCount.toLocaleString()} reviews imply the venue is already mainstream.`,
     );
     mismatchPoints += 22;
   }
 
   if (socialCalmPackActive && crowdedReality) {
     vibeGapBullets.push(
-      `Evidence: the calm clip pack shows study-, hush-, or no-wait framing (${tagSample}), but review snippets emphasize noise, crowding, or waits (${reviewSample}).`,
+      `Evidence: the calm framing pack shows study-, hush-, or no-wait cues (${tagSample}), but review snippets emphasize noise, crowding, or waits (${reviewSample}).`,
     );
     mismatchPoints += 62;
   }
@@ -490,12 +503,12 @@ function buildSocialReviewMismatch(
 
   if (waitReality && effortlessAccessSocial) {
     vibeGapBullets.push(
-      "Evidence: mock social signals imply walk-in ease, while reviews still surface lines, pacing, or reservation friction.",
+      "Evidence: goal-cue text implies walk-in ease, while reviews still surface lines, pacing, or reservation friction.",
     );
     mismatchPoints += 20;
   } else if (waitReality && socialCalmPackActive) {
     vibeGapBullets.push(
-      "Evidence: reviews mention waits or pacing alongside a low-key, “no rush” storyline in the calm clip pack.",
+      "Evidence: reviews mention waits or pacing alongside a low-key, “no rush” storyline in the calm framing pack.",
     );
     mismatchPoints += 12;
   }
@@ -503,8 +516,8 @@ function buildSocialReviewMismatch(
   if (socialBusyPack && !crowdedReality) {
     vibeGapBullets.push(
       usesGoogleReviewSignals(place)
-        ? `Evidence: clips read energetic (${tagSample}), while the available Google review signals are comparatively tame on waits and noise — a partial, not total, narrative gap.`
-        : `Evidence: clips read energetic (${tagSample}), while this mock review slice is comparatively tame on waits and noise — a partial, not total, narrative gap.`,
+        ? `Evidence: goal-cue text reads energetic (${tagSample}), while the available Google review signals are comparatively tame on waits and noise — a partial, not total, mismatch.`
+        : `Evidence: goal-cue text reads energetic (${tagSample}), while this illustrative review slice is comparatively tame on waits and noise — a partial, not total, mismatch.`,
     );
     mismatchPoints += 20;
   }
@@ -514,8 +527,8 @@ function buildSocialReviewMismatch(
   if (!hadConflictMismatch && !socialReviewAgreeBusy) {
     vibeGapBullets.push(
       usesGoogleReviewSignals(place)
-        ? "Evidence: visible captions/tags and review themes line up in the available Google review signals — any remaining deltas look situational (timing, seating, or party size)."
-        : "Evidence: visible captions/tags and review themes line up in this mock slice — any remaining deltas look situational (timing, seating, or party size).",
+        ? "Evidence: visible tags and review themes line up in the available Google review signals — any remaining deltas look situational (timing, seating, or party size)."
+        : "Evidence: visible tags and review themes line up in this illustrative slice — any remaining deltas look situational (timing, seating, or party size).",
     );
   }
 
@@ -594,12 +607,12 @@ function finalizeVibeGapScore(mismatch: MismatchSignals, divergence: number, pla
 
 function verdictForVibeGap(vibeGapScore: number): string {
   if (vibeGapScore <= GAP_LOW_MAX) {
-    return "Social clips and reviews largely agree on what this place feels like day to day.";
+    return "Venue framing and review themes mostly line up in this snapshot.";
   }
   if (vibeGapScore <= GAP_MED_MAX) {
-    return "There is a clear gap between the highlight reel and what reviewers consistently report.";
+    return "Noticeable mismatch between goal-cue text cues and recurring review themes.";
   }
-  return "Strong conflict — the feed’s story often diverges from aggregated review reality.";
+  return "High mismatch between general venue appeal and review-backed visit fit.";
 }
 
 /** Intent Fit bands for quick verdict copy (V2.3). */
@@ -621,17 +634,15 @@ function buildDecisionConfidence(place: PlaceData, intent: DetectedIntent): Deci
   return "Low";
 }
 
-function confidenceReason(place: PlaceData, confidence: DecisionSummary["confidence"], hasGoal: boolean): string {
+function confidenceReason(place: PlaceData, confidence: DecisionSummary["confidence"]): string {
   if (confidence === "High") {
     return "Based on a matched Google place and repeated Google review themes.";
   }
   if (confidence === "Medium") {
-    return hasGoal
-      ? "Based on Google place data and limited review signals; social comparison uses mock social signals."
-      : "Based on Google place data and limited review signals; no clear goal was parsed and social comparison uses mock social signals.";
+    return PRODUCT_HONESTY_FULL;
   }
   if (place.dataSource === "google" && !usesGoogleReviewSignals(place)) {
-    return "Based on Google place data with mock review signals; social comparison uses mock social signals.";
+    return "Place profile from Google; review theme depth is limited in this snapshot.";
   }
   return "Based on illustrative mock data, not a confirmed real venue.";
 }
@@ -686,7 +697,8 @@ function buildDecisionSummary(input: {
   if (!hasGoal) {
     if (score.vibeGapScore >= 70) {
       label = "MAYBE";
-      decisionLine = "Venue lookup without a parsed goal — mock social and review signals disagree enough that we would not over-commit.";
+      decisionLine =
+        "Venue check without a parsed visit goal — venue details and review signals disagree enough that we would not over-commit without clearer intent.";
     } else if (label === "GO" && (score.vibeGapScore >= 45 || score.waitRiskScore >= 60 || score.priceRealityScore >= 60)) {
       label = "MAYBE";
       decisionLine = "Venue lookup looks workable, but risk signals suggest caution before you lock a plan.";
@@ -704,7 +716,7 @@ function buildDecisionSummary(input: {
     decisionLine = `${goalHint}fit looks strong with no major review warnings in the current snapshot — best current read based on available signals.`;
   }
 
-  const reason = `${decisionLine} ${confidenceReason(place, confidence, hasGoal)}`;
+  const reason = `${decisionLine} ${confidenceReason(place, confidence)}`;
   return { label, confidence, reason };
 }
 
@@ -721,14 +733,14 @@ type QuickVerdictInput = {
 function frameQuickVerdictExplanation(explanation: string, mode: QueryMode, place: PlaceData): string {
   let framed: string;
   if (mode === "goal_search") {
-    framed = `Illustrative mock venue for your goal — ${explanation}`;
+    framed = `Goal-style lookup — ${explanation}`;
   } else if (mode === "specific_place") {
     framed = `Named venue — ${explanation}`;
   } else {
     framed = `Named venue and goal — ${explanation}`;
   }
   if (place.dataSource === "google" && place.isRealPlaceData) {
-    framed = `${framed} Google confirms the venue details; social comparison is still mocked in this prototype.`;
+    framed = `${framed} Google confirms the venue details; scoring uses available Google review signals and rule-based weighting.`;
   }
   return framed;
 }
@@ -764,16 +776,16 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
   if (k === "venue_lookup") {
     if (gapLow) {
       return {
-        title: "Good match for a casual visit",
+        title: "Venue check",
         explanation: gRev
-          ? "Without a specific goal in your search, the headline is alignment: mock social clips and available Google review signals describe a similar room — still skim for waits or price."
-          : "Without a specific goal in your search, the headline is alignment: clips and reviews describe a similar room in this mock — still skim for waits or price.",
+          ? "No specific visit goal was detected. This report uses venue details, ratings, and available Google review themes. On-card goal cues and reviews point in a similar direction in this snapshot — add a goal like “low wait” or “birthday dinner” for a sharper read."
+          : "No specific visit goal was detected. This report uses venue details, ratings, and available review themes. Add a goal like “quiet study”, “low wait”, or “birthday dinner” for a stronger recommendation.",
       };
     }
     return {
-      title: "Social and reviews disagree — read before you go",
+      title: "Venue check",
       explanation:
-        "No visit goal was parsed, so focus on the mismatch: mock social signals and reviews are telling different stories. A few fresh reviews beat the highlight reel.",
+        "No specific visit goal was detected. This report uses venue details, rating quality, and available review themes. Add a goal like “no waiting time”, “quiet study”, or “birthday dinner” for a stronger recommendation.",
     };
   }
 
@@ -782,29 +794,29 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Good for a lively night out — but expect crowds and waits.",
         explanation:
-          "Clips and reviews both describe a high-energy room in this draw — treat lines, volume, and timing as normal parts of the night, not a surprise.",
+          "goal-cue text and reviews both describe a high-energy room in this draw — treat lines, volume, and timing as normal parts of the night, not a surprise.",
       };
     }
     if (k === "budget_celebration") {
       return {
-        title: "Good match — social and reviews agree.",
+        title: "Good match — cues and reviews agree.",
         explanation: gRev
-          ? "For a budget-friendly celebration, the feed and review themes line up on value, waits, and crowding in the available Google review signals — still confirm menu math, tax, and tip so the bill matches the occasion."
-          : "For a budget-friendly celebration, the feed and review themes line up on value, waits, and crowding in this mock — still confirm menu math, tax, and tip so the bill matches the occasion.",
+          ? "For a budget-friendly celebration, goal-cue text and review themes line up on value, waits, and crowding in the available Google review signals — still confirm menu math, tax, and tip so the bill matches the occasion."
+          : "For a budget-friendly celebration, goal-cue text and review themes line up on value, waits, and crowding in this illustrative slice — still confirm menu math, tax, and tip so the bill matches the occasion.",
       };
     }
     if (k === "study_work" || k === "quiet_calm") {
       return {
-        title: "Good match — social and reviews agree.",
+        title: "Good match — cues and reviews agree.",
         explanation:
-          "For quiet or focused time, mock social signals and reviews point the same direction here — pick a calm window and double-check seating, but the big story looks consistent.",
+          "For quiet or focused time, goal-cue text and review signals point the same direction here — pick a calm window and double-check seating, but the big story looks consistent.",
       };
     }
     return {
-      title: "Good match — social and reviews agree.",
+      title: "Good match — framing and reviews agree.",
       explanation: gRev
-        ? "For what you searched, mock clips and available Google review signals are not fighting each other — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating)."
-        : "For what you searched, clips and reviews are not fighting each other in this mock — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating).",
+        ? "For what you searched, goal-cue text and available Google review signals are not fighting each other — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating)."
+        : "For what you searched, goal-cue text and review cues are not fighting each other in this illustrative slice — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating).",
     };
   }
 
@@ -813,27 +825,27 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Good for a lively night out — but expect crowds and waits.",
         explanation:
-          "The vibe still fits a night out, but mock social signals may gloss over lines, packed dance floors, or pacing friction that reviewers repeat — leave extra time for entry or waits.",
+          "The vibe still fits a night out, but goal-cue text may gloss over lines, packed dance floors, or pacing friction that reviewers repeat — leave extra time for entry or waits.",
       };
     }
     if (k === "budget_celebration") {
       return {
-        title: "Good for your goal — but clips may gloss over the rough edges.",
+        title: "Good for your goal — but framing may gloss over the rough edges.",
         explanation:
-          "A celebration on a budget can still work, yet mock social signals may play down tabs, waits, or a loud room — align on price, timing, and how “special” the night needs to feel before you invite everyone.",
+          "A celebration on a budget can still work, yet upbeat framing may play down tabs, waits, or a loud room — align on price, timing, and how “special” the night needs to feel before you invite everyone.",
       };
     }
     if (k === "study_work" || k === "quiet_calm") {
       return {
         title: "Possible for your goal — verify the calm story.",
         explanation:
-          "Intent Fit looks decent, but social and reviews are not perfectly aligned on noise or crowding — skim recent comments for loud or crowded stretches before you book a long study block.",
+          "Intent Fit looks decent, but framing and reviews are not perfectly aligned on noise or crowding — skim recent comments for loud or crowded stretches before you book a long study block.",
       };
     }
     return {
-      title: "Good for your goal — but social media may be misleading.",
+      title: "Good for your goal — but signals conflict.",
       explanation:
-        "The place may still suit what you want, yet clips and reviews disagree enough that surprises are likely — anchor on review themes for waits, noise, and price.",
+        "The place may still suit what you want, yet framing and reviews disagree enough that surprises are likely — anchor on review themes for waits, noise, and price.",
     };
   }
 
@@ -843,35 +855,35 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Skip it for studying.",
         explanation:
-          "Mock social signals and reviews both point to a busy, high-energy place. The issue is not hype mismatch — it is poor fit for quiet work.",
+          "goal-cue text and reviews both point to a busy, high-energy place. The issue is not a framing mismatch — it is poor fit for quiet work.",
       };
     }
     if (k === "study_work" || k === "quiet_calm") {
       return {
-        title: "Skip it for your goal — social and reviews agree.",
+        title: "Skip it for your goal — framing and reviews agree.",
         explanation:
-          "Channels line up on noise, turnover, or seating that clashes with focus or calm — the honest read is a miss for what you typed.",
+          "Signals line up on noise, turnover, or seating that clashes with focus or calm — the honest read is a miss for what you typed.",
       };
     }
     if (k === "party_nightlife") {
       return {
-        title: "Skip it for a party night — channels agree.",
+        title: "Skip it for a party night — signals agree.",
         explanation: gRev
-          ? "Clips and available Google review signals both describe a room that does not deliver the nightlife energy you asked for — pick a different spot rather than hoping it transforms at 10 p.m."
-          : "Clips and reviews both describe a room that does not deliver the nightlife energy you asked for in this mock — pick a different spot rather than hoping it transforms at 10 p.m.",
+          ? "goal-cue text and available Google review signals both describe a room that does not deliver the nightlife energy you asked for — pick a different spot rather than hoping it transforms at 10 p.m."
+          : "goal-cue text and reviews both describe a room that does not deliver the nightlife energy you asked for in this illustrative slice — pick a different spot rather than hoping it transforms at 10 p.m.",
       };
     }
     if (k === "budget_celebration") {
       return {
         title: "Skip it for a budget celebration.",
         explanation:
-          "Posts and reviews both imply price pressure, waits, or crowding that fights a tight, special-occasion plan — agreement here means a clean “no,” not a mystery.",
+          "Framing and reviews both imply price pressure, waits, or crowding that fights a tight, special-occasion plan — agreement here means a clean “no,” not a mystery.",
       };
     }
     return {
-      title: "Skip it for your goal — social and reviews agree.",
+      title: "Skip it for your goal — framing and reviews agree.",
       explanation:
-        "The channels tell the same story, and that story is a poor match for what you searched — believe the agreement and pick elsewhere.",
+        "The signals tell the same story, and that story is a poor match for what you searched — believe the agreement and pick elsewhere.",
     };
   }
 
@@ -880,13 +892,13 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Risky for a budget celebration.",
         explanation:
-          "Mock social signals frame it as cheap or easy, but reviews suggest price pressure, waits, or crowding — poor goal fit plus unreliable hype is a tough combo for a celebration on a cap.",
+          "goal-cue text reads budget-friendly, but reviews suggest price pressure, waits, or crowding — weak fit for a celebration on a cap.",
       };
     }
     return {
-      title: "Risky choice — poor goal fit and unreliable hype.",
+      title: "Risky choice — weak fit for your goal.",
       explanation:
-        "Intent Fit is weak while social and reviews disagree — you would be betting on a place that does not match your goal and where the feed is not a reliable guide.",
+        "Intent Fit is weak while goal-cue text and review themes disagree — anchor on waits, noise, and price in recent reviews before you commit.",
     };
   }
 
@@ -895,20 +907,20 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Uncertain for studying — check recent noise and seating reviews.",
         explanation:
-          "Intent Fit sits in the gray zone while social and reviews mostly agree — that often means seat-by-seat luck. Skim very fresh notes on volume, turnover, outlets, and table size before you bank on a long session.",
+          "Intent Fit sits in the gray zone while framing and reviews mostly agree — that often means seat-by-seat luck. Skim very fresh notes on volume, turnover, outlets, and table size before you bank on a long session.",
       };
     }
     return {
-      title: "Moderate fit — channels mostly agree.",
+      title: "Moderate fit — signals mostly agree.",
       explanation:
-        "Intent Fit sits in the middle: not a slam dunk for your goal, but social and reviews are not contradicting each other here — a careful visit can still work if you read fresh notes.",
+        "Intent Fit sits in the middle: not a slam dunk for your goal, but framing and reviews are not contradicting each other here — a careful visit can still work if you read fresh notes.",
     };
   }
 
   return {
     title: "Uncertain fit — mixed goal match and noisy signals.",
     explanation:
-      "Intent Fit is middling while social and reviews pull in different directions — treat this as a yellow light: anchor on recent reviews and keep a backup plan.",
+      "Intent Fit is middling while framing and reviews pull in different directions — treat this as a yellow light: anchor on recent reviews and keep a backup plan.",
   };
 }
 
@@ -922,7 +934,7 @@ function buildIntentEvidenceBullets(input: {
 }): readonly [string, string, string] {
   const { kind, score, mismatch, reviewBlob, place, socialBlob } = input;
   const b1 = selectReviewLineForEvidence(place, reviewBlob, kind);
-  const b2 = socialLineForEvidence(kind, mismatch, socialBlob);
+  const b2 = framingSignalLineForEvidence(kind, mismatch, socialBlob);
   const b3 = thirdEvidenceLine(score, kind, place);
   return [b1, b2, b3];
 }
@@ -940,8 +952,8 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
   if (kind === "budget_celebration" || kind === "budget_eats") {
     if (/\b(expensive|overpriced|wait|line|portion)\b/i.test(reviewBlob)) {
       return gRev
-        ? "Google review themes flag price or line pressure, so budget predictability may be weaker than the mock social signals suggest."
-        : "Mock review signals flag price or line pressure, so budget predictability may be weaker than the mock social signals suggest.";
+        ? "Google review themes flag price or line pressure, so budget predictability may be weaker than upbeat goal-cue text suggests."
+        : "Illustrative review signals flag price or line pressure, so budget predictability may be weaker than upbeat goal-cue text suggests.";
     }
   }
   if (kind === "study_work" || kind === "quiet_calm") {
@@ -967,28 +979,28 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
   return pickReviewEvidenceLine(place, reviewBlob);
 }
 
-function socialLineForEvidence(kind: UserIntentKind, mismatch: MismatchSignals, socialBlob: string): string {
+function framingSignalLineForEvidence(kind: UserIntentKind, mismatch: MismatchSignals, socialBlob: string): string {
   if (kind === "low_wait") {
     if (/\b(wait|line|queue|packed|crowd|reservation)\b/i.test(socialBlob)) {
-      return "Mock social signals still show peak-time crowd cues, so no-wait expectations may be fragile.";
+      return "goal-cue text still shows peak-time crowd cues, so no-wait expectations may be fragile.";
     }
-    return "Mock social signals imply easier access, but review-side queue signals should drive the decision.";
+    return "goal-cue text implies easier access, but review-side queue signals should drive the decision.";
   }
   if (kind === "party_nightlife") {
     if (mismatch.socialMode === "lively") {
-      return "Mock social signals skew DJ-forward and high-energy, with packed-room cues in this sample.";
+      return "goal-cue text skews DJ-forward and high-energy, with packed-room cues in this vignette.";
     }
-    return "Mock social signals read softer than peak club hours — still compare with reviews on bass, lines, and fill times.";
+    return "goal-cue text reads softer than peak club hours — still compare with reviews on bass, lines, and fill times.";
   }
   if (kind === "budget_celebration" || kind === "budget_eats") {
     if (/\b(cheap|budget|deal|steal|value)\b/i.test(socialBlob)) {
-      return "Mock social signals push easy value and shareable moments — weigh that against recurring review-side price concerns.";
+      return "goal-cue text pushes easy value and shareable moments — weigh that against recurring review-side price concerns.";
     }
-    return "Mock social signals still skew appetizing and fun — pair that with a quick scan for wait and value themes in reviews.";
+    return "goal-cue text still skews appetizing and fun — pair that with a quick scan for wait and value themes in reviews.";
   }
   return mismatch.socialMode === "lively"
-    ? "Mock social signals read loud, line-prone, and high-energy — not ideal for deep-focus work."
-    : "Mock social signals lean calmer or easier access — compare that storyline with review themes on noise and waits.";
+    ? "goal-cue text reads loud, line-prone, and high-energy — not ideal for deep-focus work."
+    : "goal-cue text leans calmer or easier access — compare that storyline with review themes on noise and waits.";
 }
 
 function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: PlaceData): string {
@@ -1029,7 +1041,7 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
 
   if (kind === "budget_celebration" || kind === "budget_eats") {
     if (score.priceRealityScore >= 50) {
-      return "Price mismatch risk looks meaningful — easy value framing on social may not match how the check lands in reviews.";
+      return "Price mismatch risk looks meaningful — upbeat value framing may not match how the check lands in reviews.";
     }
     if (score.waitRiskScore >= 50) {
       return kind === "budget_celebration"
@@ -1047,8 +1059,8 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
 
   if (kind === "family") {
     return score.vibeGapScore > GAP_LOW_MAX
-      ? "Family cues in reviews and clip tone are not fully aligned — double-check kid policies, volume, and high-chair availability."
-      : "Posts and reviews mostly agree on the vibe family-wise — still confirm booster seats or stroller space if you need them.";
+      ? "Family cues in reviews and goal-cue text are not fully aligned — double-check kid policies, volume, and high-chair availability."
+      : "Framing and reviews mostly agree on the vibe family-wise — still confirm booster seats or stroller space if you need them.";
   }
 
   if (kind === "luxury") {
@@ -1060,8 +1072,8 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
   }
 
   return score.vibeGapScore > GAP_LOW_MAX
-    ? "With no parsed goal, lean on the disagreement itself: clip promises drift from what reviewers keep repeating."
-    : "Without a parsed goal, clips and reviews line up enough that there is no big mystery to solve here.";
+    ? "With no parsed goal, lean on the mismatch between goal-cue text and what reviewers keep repeating."
+    : "Without a parsed goal, framing and reviews line up enough that there is no big mystery to solve here.";
 }
 
 function pickReviewEvidenceLine(place: PlaceData, reviewBlob: string): string {
@@ -1094,8 +1106,8 @@ function pickReviewEvidenceLine(place: PlaceData, reviewBlob: string): string {
 type IntentFitResult = { score: number; verdict: string; bullets: string[] };
 
 /**
- * Scores how well the venue matches the user’s inferred goal using reviews + social as “what you’ll get”.
- * High score = good fit; low score = your goal is poorly served. Independent of social-vs-review agreement.
+ * Scores how well the venue matches the user’s inferred goal using reviews + goal-cue text as “what you’ll get”.
+ * High score = good fit; low score = your goal is poorly served. Independent of the signal-gap score.
  */
 function computeIntentFitScore(
   intent: DetectedIntent,
@@ -1123,7 +1135,7 @@ function computeIntentFitScore(
       verdict: "Neutral — we did not parse a specific visit goal from your search.",
       bullets: [
         "Intent Fit stays near the midpoint for venue-style queries (no study, budget, party, or similar keywords).",
-        `The report still compares social tone to reviews for “${place.name}” — add goal words (e.g. “quiet study”, “cheap eats”) to score intent more sharply.`,
+        `The report still weighs goal-cue text against reviews for “${place.name}” — add goal words (e.g. “quiet study”, “cheap eats”) to score intent more sharply.`,
       ],
     };
   }
@@ -1176,12 +1188,12 @@ function computeIntentFitScore(
         bullets: agree
           ? [
               `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ") || "query cues"}).`,
-              `The visible "${socialMode}" mock pack and review snippets both skew energetic or wait-heavy — weak match for your goal. Laptop-friendly score (${laptopFriendlyScore}/100) backs that read.`,
-              "VibeGap stays low when channels agree; Intent Fit is the main red flag for study-style plans.",
+              `The visible "${socialMode}" framing pack and review snippets both skew energetic or wait-heavy — weak match for your goal. Laptop-friendly score (${laptopFriendlyScore}/100) backs that read.`,
+              "The signal-gap score stays low when framing and reviews agree; Intent Fit is the main red flag for study-style plans.",
             ]
           : [
               `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ") || "query cues"}).`,
-              "Reviews emphasize noise, crowding, waits, or turnover — a rough match for quiet work even when clips look softer.",
+              "Reviews emphasize noise, crowding, waits, or turnover — a rough match for quiet work even when goal-cue text looks softer.",
             ],
       };
     }
@@ -1191,7 +1203,7 @@ function computeIntentFitScore(
         verdict: "Strong fit for a calmer or work-friendly visit (based on mock text).",
         bullets: [
           `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ")}).`,
-          "Review excerpts and post tone both lean quieter or more controlled — aligned with your stated goal.",
+          "Review excerpts and goal-cue text both lean quieter or more controlled — aligned with your stated goal.",
         ],
       };
     }
@@ -1209,10 +1221,10 @@ function computeIntentFitScore(
           ? `Laptop-friendly score (${laptopFriendlyScore}/100) looks weak for long sessions — pair that with review notes on noise, seating, and turnover.`
           : gRev
             ? "Available Google review themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work."
-            : "Mock themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work.",
+            : "Illustrative themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work.",
         gRev
-          ? "If you need silence, favor off-peak windows and seats away from the service path — social clips here are still mocked."
-          : "If you need silence, favor off-peak windows and seats away from the service path (mock).",
+          ? "If you need silence, favor off-peak windows and seats away from the service path — goal-cue text is illustrative, not a live crowd forecast."
+          : "If you need silence, favor off-peak windows and seats away from the service path (illustrative data).",
       ],
     };
   }
@@ -1243,11 +1255,11 @@ function computeIntentFitScore(
         bullets: [
           `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.join(", ")}).`,
           strong
-            ? "Posts and reviews skew loud, social, and weekend-forward — that usually supports a party night; lines and packed rooms read as normal friction, not a goal misfit."
-            : "The mock draw is upbeat but not a guaranteed club night — skim for DJ calendars vs. slow nights before you dress up.",
+            ? "Review signals skew loud, crowd-forward, and weekend-heavy — that usually supports a party night; lines and packed rooms read as normal friction, not a goal misfit."
+            : "The illustrative draw is upbeat but not a guaranteed club night — skim for DJ calendars vs. slow nights before you dress up.",
           nightlifeRoom
-            ? "The lively clip pack lines up with high-tempo expectations — still pick an arrival window that tolerates a wait."
-            : "Clip tone is mixed in this sample — pair it with review notes on crowd, music, and pacing.",
+            ? "The lively framing pack lines up with high-tempo expectations — still pick an arrival window that tolerates a wait."
+            : "Framing tone is mixed in this sample — pair it with review notes on crowd, music, and pacing.",
         ],
       };
     }
@@ -1257,7 +1269,7 @@ function computeIntentFitScore(
       verdict: "Soft signals for a big night out — confirm the room before you commit.",
       bullets: [
         `Matched intent: ${intent.label.toLowerCase()}.`,
-        "Posts and reviews are not consistently loud-nightlife here — check hours, DJs, and cover before you rally the group.",
+        "Framing and reviews are not consistently loud-nightlife here — check hours, DJs, and cover before you rally the group.",
       ],
     };
   }
@@ -1279,8 +1291,8 @@ function computeIntentFitScore(
             ? "Reviews skew loud or busy without strong ‘intimate table’ language — a risky pick for a quiet anniversary unless you book off-peak."
             : "Reviews skew loud or busy without strong ‘intimate table’ language — a risky pick for a quiet anniversary unless you book off-peak (mock)."
           : gRev
-            ? "Social and reviews leave room for a polished table experience — still confirm reservations and seating; social clips remain mocked in this prototype."
-            : "Social and reviews leave room for a polished table experience — still confirm reservations and seating (mock).",
+            ? "Framing and reviews leave room for a polished table experience — still confirm reservations and seating in fresh Google reviews."
+            : "Framing and reviews leave room for a polished table experience — still confirm reservations and seating (illustrative data).",
       ],
     };
   }
@@ -1359,7 +1371,7 @@ function computeIntentFitScore(
       bullets: [
         `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.join(", ")}).`,
         hostile
-          ? "Language in reviews or mock social signals leans adult-night-out — double-check kid policies before booking."
+          ? "Language in reviews or goal-cue text leans adult-night-out — double-check kid policies before booking."
           : "No strong ‘adults-only’ red flags in the sampled mock text — still verify high chairs and noise with the venue.",
       ],
     };
@@ -1529,9 +1541,9 @@ function summarizeSocialHype(posts: SocialPost[], mode: "calm" | "lively"): stri
   const tagLine = [...tags].slice(0, 6).join(", ") || "see on-card tags";
   const pack =
     mode === "lively"
-      ? "the lively mock clip pack (lines, crowds, DJ or party cues on the cards)"
-      : "the calm mock clip pack (quiet table, study, or easy-access cues on the cards)";
-  return `This sample uses ${pack}. Visible vibe tags include: ${tagLine}. VibeGap compares those clips to review text; Intent Fit compares both to the goal parsed from your search.`;
+      ? "the lively goal-cue pack (crowds, energy, or late-night cues on the cards)"
+      : "the calm goal-cue pack (quiet table, study, or easy-access cues on the cards)";
+  return `This illustration uses ${pack}. Visible vibe tags include: ${tagLine}. The signal-gap score contrasts those cards with review text; Intent Fit weighs both against the goal parsed from your search.`;
 }
 
 function deriveTags(
@@ -1615,7 +1627,7 @@ function deriveTags(
     if (score.waitRiskScore < 52) bestFor.push("Low-stress nights when you are not racing to a show after");
     const avoidIf: string[] = ["Surprise walk-ins on loud, packed nights without a reservation backup"];
     if (score.waitRiskScore >= 55) avoidIf.push("Tight timelines where a line would ruin the evening flow");
-    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting clip aesthetics alone when reviews mention noise or crowding");
+    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting polished framing alone when reviews mention noise or crowding");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
   }
 
@@ -1637,7 +1649,7 @@ function deriveTags(
     if (place.priceLevel <= 2) bestFor.push("Casual plans where the check has to stay sensible");
     const avoidIf: string[] = ["Strict budgets when reviews flag price surprises or small portions"];
     if (score.priceRealityScore >= 50) {
-      avoidIf.push("Expecting viral “cheap” captions to match the final bill every time");
+      avoidIf.push("Expecting upbeat “cheap” framing to match the final bill every time");
     }
     if (score.waitRiskScore >= 58) avoidIf.push("Rushed meals with no buffer if the kitchen or line backs up");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
@@ -1649,7 +1661,7 @@ function deriveTags(
     bestFor.push("Hosts who confirm tasting menus, dietary needs, and cancellation rules up front");
     const avoidIf: string[] = ["Last-minute bookings when reviews mention tight tables or long waits"];
     avoidIf.push("Budget caps that cannot flex if the experience runs long");
-    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting glossy mock social signals when reviews question value or consistency");
+    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting polished goal-cue text alone when reviews question value or consistency");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
   }
 
@@ -1660,13 +1672,13 @@ function deriveTags(
   if (score.laptopFriendlyScore >= 55) bestFor.push("Low-key weekday sessions when you might open a laptop");
   if (place.priceLevel <= 2) bestFor.push("Casual plans where price sensitivity matters");
   if (bestFor.length === 0) {
-    bestFor.push("A quick recon visit after skimming five recent reviews, not one viral clip");
+    bestFor.push("A quick recon visit after skimming five recent reviews, not one catchy headline card");
   }
 
   if (score.waitRiskScore >= 60) avoidIf.push("Tight itineraries with no buffer for lines or pacing");
   if (score.touristDensityScore >= 60) avoidIf.push("Peak travel windows if you dislike dense crowds");
   if (score.priceRealityScore >= 55) {
-    avoidIf.push("Expecting menu prices to match budget-hype clips when mismatch risk is high");
+    avoidIf.push("Expecting menu prices to match upbeat framing cards when mismatch risk is high");
   }
   if (score.laptopFriendlyScore < 40) avoidIf.push("Deep-focus remote work during dinner rush");
   if (score.intentFitScore < 35 && score.vibeGapScore <= GAP_MED_MAX) {
@@ -1674,7 +1686,7 @@ function deriveTags(
     if (!avoidIf.includes(msg)) avoidIf.push(msg);
   }
   if (avoidIf.length === 0) {
-    avoidIf.push("Assuming one viral clip represents every hour of service");
+    avoidIf.push("Assuming one framing card represents every hour of service");
   }
 
   return { bestFor, avoidIf };
@@ -1698,28 +1710,28 @@ function buildRecommendation(
   if (isStudyLike && lowIntent && lowVibeGap) {
     headline = "Not recommended for quiet study or deep work.";
   } else if (vibeGapScore <= GAP_LOW_MAX) {
-    headline = "Likely matches the online vibe.";
+    headline = "Cues and reviews look aligned.";
   } else if (vibeGapScore <= GAP_MED_MAX) {
     headline = "Some mismatch — go with the right expectations.";
   } else {
-    headline = "High mismatch — social vibe may be misleading.";
+    headline = "High signal mismatch — lean on review themes.";
   }
 
   let body: string;
   if (isStudyLike && lowIntent && lowVibeGap) {
     body = usesGoogleReviewSignals(place)
-      ? `${ratingLine} Mock social signals and available Google review signals mostly agree this place is energetic and busy, so VibeGap (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh Google reviews alongside this prototype read.`
-      : `${ratingLine} Mock social signals and reviews mostly agree this place is energetic and busy, so VibeGap (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh reviews — this is illustrative mock data.`;
+      ? `${ratingLine} goal-cue text and available Google review signals mostly agree this place is energetic and busy, so the signal-gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh Google reviews alongside this read.`
+      : `${ratingLine} Goal-cue text and reviews mostly agree this place is energetic and busy, so the signal-gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh reviews alongside this read.`;
   } else {
-    const planLine = `Practical fit: ${bestFor[0] ?? "a quick reconnaissance visit"}. Watch out if ${avoidIf[0]?.toLowerCase() ?? "clips oversimplify the room"}.`;
+    const planLine = `Practical fit: ${bestFor[0] ?? "a quick reconnaissance visit"}. Watch out if ${avoidIf[0]?.toLowerCase() ?? "goal-cue text oversimplifies the room"}.`;
     body =
       vibeGapScore <= GAP_LOW_MAX
         ? usesGoogleReviewSignals(place)
-          ? `${ratingLine} ${planLine} VibeGap (${vibeGapScore}/100) stays low because the visible mock clip pack and review themes line up in the available Google review signals.`
-          : `${ratingLine} ${planLine} VibeGap (${vibeGapScore}/100) stays low because the visible clip pack and review themes line up in this mock slice.`
+          ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because visible framing cards and review themes line up in the available Google review signals.`
+          : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because visible framing cards and review themes line up in this illustrative slice.`
         : vibeGapScore <= GAP_MED_MAX
-          ? `${ratingLine} ${planLine} VibeGap (${vibeGapScore}/100) is elevated where clip promises drift from recurring review themes.`
-          : `${ratingLine} ${planLine} VibeGap (${vibeGapScore}/100) is high — anchor expectations on review themes, not the most aspirational mock social signals.`;
+          ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is elevated where framing cues drift from recurring review themes.`
+          : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is high — anchor expectations on review themes, not the most aspirational framing cards.`;
 
     if (detectedIntent.kind !== "venue_lookup") {
       const intentLabel =

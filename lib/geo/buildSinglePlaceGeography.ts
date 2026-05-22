@@ -64,8 +64,7 @@ export async function buildSinglePlaceGeography(
   const distanceFromAnchorMeters =
     anchor != null && nearAnchorDisplayName != null ? getDistanceMeters(anchor, placePoint) : null;
 
-  const mapPreviewNote =
-    nearAnchorDisplayName == null ? "Location available for map view later." : null;
+  const mapPreviewNote: string | null = null;
 
   return {
     searchAreaLabel,

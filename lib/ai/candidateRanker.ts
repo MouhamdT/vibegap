@@ -1,4 +1,5 @@
 import type { DetectedIntent, PlaceData, RankedCandidate, UserIntentKind } from "@/lib/types/vibecheck";
+import { evaluateCandidateQualityGate } from "@/lib/ai/candidateQualityGate";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -147,7 +148,7 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
     if (signals.dead) score -= 20;
     if (signals.waitHeavy) score -= 8;
     mainRisk = signals.waitHeavy ? "Line and door friction" : signals.dead ? "Low energy vs. plan" : "Night-to-night variability";
-    bestFor = "Lively social nights with buffer time";
+    bestFor = "Lively nights out with buffer time";
     avoidIf = "No-wait, guaranteed peak energy";
   } else if (intentKind === "family") {
     signals.familyFriendly = riskFromBlob(blob, /\bfamily|kids|friendly|welcoming\b/i);
@@ -320,17 +321,17 @@ function buildDecisionAwareReason(
     const mealish = /\b(brunch|lunch|dinner|coffee|meal|café|cafe)\b/i.test(intent.label);
     if (mealish) {
       if (label === "GO") {
-        return `Good meal-context signal from ratings and review breadth; tourist-area crowding may still affect timing — social comparison uses mock signals.`;
+        return `Good meal-context signal from ratings and review breadth; tourist-area crowding may still affect timing — rankings stay rule-based on the same signals.`;
       }
       if (label === "MAYBE") {
         return v % 2 === 0
           ? `Meal fit is plausible, but crowd timing or value looks less certain than higher-ranked picks.`
-          : `Check seating predictability in fresh reviews; illustrative social comparison should not replace a menu read.`;
+          : `Check seating predictability in fresh reviews; on-card cues should not replace reading the room yourself.`;
       }
       return `Weak meal-context fit versus review themes for this shortlist.`;
     }
     if (label === "GO") {
-      return `Strong rating and review depth for ${place.name}; visit goal was underspecified so fit is mostly quality-led — social remains illustrative mock signals.`;
+      return `Strong rating and review depth for ${place.name}; visit goal was underspecified so fit is mostly quality-led — goal cues stay secondary to reviews.`;
     }
     if (label === "MAYBE") {
       return `Mixed quality read from available signals — useful as a shortlist tie-break, not a guarantee without a stated goal.`;
@@ -454,7 +455,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review text is available; social remains illustrative mock signals.",
+        explanation: "Higher when Google review text is available; goal cues stay secondary to live reviews.",
       },
     ];
   }
@@ -484,7 +485,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
       },
     ];
   }
@@ -510,7 +511,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
       },
     ];
   }
@@ -536,7 +537,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
       },
     ];
   }
@@ -546,7 +547,7 @@ function scoreBreakdownFor(
       {
         label: "Nightlife / energy fit",
         score: clamp(55 + (analysis.signals.lively ? 28 : 0) - (analysis.signals.dead ? 24 : 0), 0, 100),
-        explanation: analysis.signals.lively ? "Reviews skew toward lively, social, or music-forward nights." : "Energy signal is mixed versus a big night out.",
+        explanation: analysis.signals.lively ? "Reviews skew toward lively, crowd-forward, or music-forward nights." : "Energy signal is mixed versus a big night out.",
       },
       {
         label: "Queue / wait risk",
@@ -557,7 +558,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
       },
     ];
   }
@@ -578,7 +579,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
       },
     ];
   }
@@ -601,7 +602,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
       },
     ];
   }
@@ -613,7 +614,7 @@ function scoreBreakdownFor(
     {
       label: "Signal confidence",
       score: confidenceScore,
-      explanation: "Higher when Google review signals are available; social comparison uses mock signals.",
+      explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
     },
   ];
 }
@@ -621,13 +622,17 @@ function scoreBreakdownFor(
 export function rankCandidatesByIntent(candidates: PlaceData[], intent: DetectedIntent): RankedCandidate[] {
   const ranked = candidates.map((place) => {
     const analysis = rankForIntent(place, intent);
+    const gate = evaluateCandidateQualityGate(place, intent);
+    const tierAdj =
+      gate.qualityTier === "strong" ? 14 : gate.qualityTier === "acceptable" ? 4 : gate.qualityTier === "weak" ? -16 : -32;
+    const blendedFit = clamp(analysis.fitScore + tierAdj, 0, 100);
     const label: RankedCandidate["decision"]["label"] =
-      analysis.fitScore >= 72 ? "GO" : analysis.fitScore >= 46 ? "MAYBE" : "SKIP";
+      blendedFit >= 72 ? "GO" : blendedFit >= 46 ? "MAYBE" : "SKIP";
     const adjustedLabel =
       (intent.kind === "study_work" || intent.kind === "quiet_calm") &&
       isStudyPlaceType(place) &&
       label === "SKIP" &&
-      analysis.fitScore >= 34
+      blendedFit >= 34
         ? "MAYBE"
         : label;
     const confidence: RankedCandidate["decision"]["confidence"] =
@@ -635,15 +640,23 @@ export function rankCandidatesByIntent(candidates: PlaceData[], intent: Detected
 
     const confidenceScore = confidence === "High" ? 85 : confidence === "Medium" ? 65 : 38;
     const reviewStrength = clamp(Math.round(Math.min(place.reviewCount / 20, 60) + place.averageRating * 8), 10, 95);
-    const riskPenalty = clamp(100 - analysis.fitScore, 5, 95);
+    const riskPenalty = clamp(100 - blendedFit, 5, 95);
 
     const scoreDriver = pickScoreDriver(intent, analysis.signals, place);
-    const scoreBreakdown = scoreBreakdownFor(intent, analysis, place, analysis.fitScore, riskPenalty, reviewStrength, confidenceScore);
+    const scoreBreakdown = scoreBreakdownFor(
+      intent,
+      analysis,
+      place,
+      blendedFit,
+      riskPenalty,
+      reviewStrength,
+      confidenceScore,
+    );
 
     return {
       place,
       decision: { label: adjustedLabel, confidence },
-      fitScore: analysis.fitScore,
+      fitScore: blendedFit,
       oneSentenceReason: "",
       decisionToneLine: decisionToneLine(adjustedLabel, place.id),
       rankReason: "",
@@ -652,6 +665,8 @@ export function rankCandidatesByIntent(candidates: PlaceData[], intent: Detected
       bestFor: analysis.bestFor,
       avoidIf: analysis.avoidIf,
       scoreBreakdown,
+      intentQualityTier: gate.qualityTier,
+      intentQualitySummary: gate.penalties[0] ?? gate.boosts[0] ?? gate.reason,
     };
   });
 

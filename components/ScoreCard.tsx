@@ -4,7 +4,7 @@ export type ScoreCardProps = {
   /** Upper bound for display (default 100). */
   max?: number;
   hint?: string;
-  /** Larger typography for the primary VibeGap score. */
+  /** Larger typography for the primary signal-gap score card. */
   emphasis?: boolean;
 };
 

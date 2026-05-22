@@ -59,6 +59,12 @@ function extractGoalFromPair(left: string, right: string): { placeA: string; pla
   return { placeA, placeB, goal };
 }
 
+function extractTrailingGoalFromFullCompareQuery(full: string): string {
+  const m = full.trim().match(/\bfor\s+(.+)$/i);
+  if (!m?.[1]?.trim()) return "";
+  return m[1].trim();
+}
+
 /**
  * Detects head-to-head compare queries and extracts two venue names plus an optional goal clause.
  * Returns null when the string does not confidently read as a two-place comparison.
@@ -95,7 +101,11 @@ export function parseCompareQuery(raw: string): ParsedCompareQuery | null {
 
   if (!pair) return null;
 
-  const { placeA, placeB, goal } = extractGoalFromPair(pair.left, pair.right);
+  let { placeA, placeB, goal } = extractGoalFromPair(pair.left, pair.right);
+  if (!goal.trim()) {
+    const tailGoal = extractTrailingGoalFromFullCompareQuery(raw.trim());
+    if (tailGoal) goal = tailGoal;
+  }
 
   if (!looksLikeNamedPlace(placeA) || !looksLikeNamedPlace(placeB)) return null;
   if (placeA.toLowerCase() === placeB.toLowerCase()) return null;

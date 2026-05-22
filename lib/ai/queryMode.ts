@@ -35,7 +35,9 @@ export function normalizeRoutingTypos(text: string): string {
   return text
     .replace(/\bmichlen\b/gi, "michelin")
     .replace(/\bmichelen\b/gi, "michelin")
-    .replace(/\bresturant\b/gi, "restaurant");
+    .replace(/\bresturant\b/gi, "restaurant")
+    .replace(/\bbreakfest\b/gi, "breakfast")
+    .replace(/\bcoffe\b/gi, "coffee");
 }
 
 /**
@@ -414,11 +416,45 @@ function tryPrepStructuredRecommendation(normalizedQuery: string): QueryClassifi
 }
 
 /**
- * Deterministic routing that runs before treating a query as a single named venue.
- * Covers “brunch in London”, “coffee near Eiffel Tower”, “cheap birthday dinner London”, etc.
+ * "Trevi Fountain brunch", "British Museum coffee" — landmark-ish span first, short goal last.
+ * Produces `place_with_intent` so landmark anchor routing can switch to recommendations.
  */
+function tryLeadingLandmarkThenShortGoal(normalized: string): QueryClassification | null {
+  const m = normalized.match(
+    /^(.+?)\s+(brunch|breakfast|lunch|dinner|supper|coffee|cafe|café|study|studying)\s*$/i,
+  );
+  if (!m?.[1] || !m[2]) return null;
+  const leftRaw = m[1].trim();
+  const goalToken = m[2].trim().toLowerCase();
+  if (leftRaw.length < 4 || /\b(in|near|around|by|for|vs|compare|which)\b/i.test(leftRaw)) return null;
+  const leftWords = leftRaw.split(/\s+/).filter(Boolean);
+  const looksLandmarky =
+    leftWords.length >= 2 ||
+    /\b(museum|fountain|tower|park|colosseum|palace|cathedral|garden|bridge|square|zoo|library|hill|wall|gate|arc|forum|pantheon|trevi|covent|hyde|central\s+park|british\s+museum)\b/i.test(
+      leftRaw,
+    );
+  if (!looksLandmarky) return null;
+  const goalText = goalToken === "studying" ? "study" : goalToken;
+  if (!hasGoalTailSignals(goalText)) return null;
+  const anchor = formatSearchQueryForDisplay(leftRaw);
+  return {
+    queryMode: "place_with_intent",
+    placeNameCandidate: anchor,
+    intentGoalText: goalText,
+    queryExplanation:
+      "Landmark-style name first with a short visit goal after it: we resolve the anchor, then shortlist nearby venues when it reads as a landmark or public place.",
+    queryContextBanner: "Finding places that match your plan.",
+    locationCandidate: null,
+    recommendationMode: false,
+    recommendationNearAnchorName: null,
+    recommendationRankIntent: null,
+  };
+}
+
 function tryDeterministicRecommendationBeforeVenue(raw: string): QueryClassification | null {
   const normalized = normalizeRoutingTypos(raw.trim());
+  const leading = tryLeadingLandmarkThenShortGoal(normalized);
+  if (leading) return leading;
   const prep = tryPrepStructuredRecommendation(normalized);
   if (prep) return prep;
   return tryImplicitTrailingCityRecommendation(normalized);
@@ -661,8 +697,8 @@ function tryTrailingPlaceWithIntent(raw: string): QueryClassification | null {
         placeNameCandidate: left,
         intentGoalText: right.trim(),
         queryExplanation:
-          "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; VibeGap still contrasts illustrative social framing with review data for the matched place.",
-        queryContextBanner: "Checking this place against your goal.",
+          "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; the signal-gap read contrasts on-card goal cues with Google review signals for the matched place.",
+        queryContextBanner: "Checking this venue against your goal.",
         locationCandidate: null,
         recommendationMode: false,
         recommendationNearAnchorName: null,
@@ -690,8 +726,8 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
         placeNameCandidate: before,
         intentGoalText: after,
         queryExplanation:
-          "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; VibeGap contrasts illustrative social framing with review data for that named pick.",
-        queryContextBanner: "Checking this place against your goal.",
+          "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; the signal-gap read contrasts on-card goal cues with Google review data for that named pick.",
+        queryContextBanner: "Checking this venue against your goal.",
         locationCandidate: null,
         recommendationMode: false,
         recommendationNearAnchorName: null,
@@ -714,8 +750,8 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
       placeNameCandidate: null,
       intentGoalText: null,
       queryExplanation:
-        "We read this as a goal-style search. Intent Fit is the lead signal; VibeGap adds how social and reviews line up on an illustrative mock venue.",
-      queryContextBanner: hasLoc ? "Finding places that match your plan." : "Checking fit for your goal.",
+        "We read this as a goal-style search. Intent Fit is the lead signal; the signal-gap score adds how on-card goal cues and Google reviews line up for the venue.",
+      queryContextBanner: hasLoc ? "Finding places that match your plan." : "Finding places that match your goal.",
       locationCandidate,
       recommendationMode: hasLoc,
       recommendationNearAnchorName: null,
@@ -728,8 +764,8 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
     placeNameCandidate: raw.length > 0 ? formatSearchQueryForDisplay(raw) : null,
     intentGoalText: null,
     queryExplanation:
-      "We read this as a named venue. VibeGap is the headline read (social vs reviews); Intent Fit stays neutral unless goal words show up in the text.",
-    queryContextBanner: "Checking this specific place.",
+      "We read this as a named venue. The signal-gap read is the headline check (cue text vs. reviews); Intent Fit stays neutral unless goal words show up in the text.",
+    queryContextBanner: "Checking this venue.",
     locationCandidate: null,
     recommendationMode: false,
     recommendationNearAnchorName: null,

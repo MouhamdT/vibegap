@@ -1,5 +1,5 @@
 /**
- * Shared types for VibeGap — social hype vs. review reality.
+ * Shared types for VibeGap — goal fit vs. review-backed venue signals.
  */
 
 export type PriceLevel = 1 | 2 | 3 | 4;
@@ -54,6 +54,14 @@ export interface RankedCandidate {
   distanceFromAnchorMeters?: number | null;
   /** Optional transparent note; does not change ranking scores. */
   geographySignalLine?: string | null;
+  /** V28: deterministic intent-shape tier for this row (optional). */
+  intentQualityTier?: "strong" | "acceptable" | "weak" | "poor";
+  /** Short user-facing note from the quality gate (optional). */
+  intentQualitySummary?: string | null;
+  /** V29: optional label from recommendation style (Reliable / Balanced / Discovery). */
+  recommendationStyleLabel?: string | null;
+  /** V30: curated shortlist role for this row (optional). */
+  shortlistRole?: string;
 }
 
 export interface RecommendationGeography {
@@ -108,7 +116,7 @@ export interface QuickVerdict {
   title: string;
   /** One or two plain sentences — what to do, in human language. */
   explanation: string;
-  /** Three scannable reasons tied to the same mock data as the full report. */
+  /** Three scannable reasons tied to the same signals as the full report. */
   evidenceBullets: readonly [string, string, string];
 }
 
@@ -125,13 +133,13 @@ export interface PlaceData {
   recentReviewSummary: string;
   complaints: string[];
   positives: string[];
-  /** When set on goal_search mock places, nudges illustrative social/review flavor (server-only). */
+  /** When set on goal_search mock places, nudges illustrative venue/review flavor (server-only). */
   mockGoalIntentKind?: UserIntentKind;
   /** Provenance of place fields (mock vs Google Places). */
   dataSource?: "mock" | "google";
   /** Google resource id when `dataSource` is `google`. */
   googlePlaceId?: string;
-  /** True when name/address/reviews come from Google Places (still paired with mock social). */
+  /** True when name/address/reviews come from Google Places. */
   isRealPlaceData?: boolean;
   /** True when we successfully extracted signals from real Google review text. */
   hasRealGoogleReviews?: boolean;
@@ -156,7 +164,7 @@ export interface SocialPost {
   /** Placeholder thumbnail; null uses a gradient frame in the UI. */
   thumbnailUrl: string | null;
   postedAt: string;
-  /** How amplified the narrative feels on social (0–100). */
+  /** How amplified the sample framing feels on cards (0–100). */
   hypeScore: number;
 }
 
@@ -188,13 +196,13 @@ export type QueryMode = "goal_search" | "specific_place" | "place_with_intent";
 
 export interface VibeGapScore {
   /**
-   * Social hype vs. review-reality mismatch (0 = aligned, 100 = strong conflict).
+   * Signal gap between sample framing and review-backed cues (0 = aligned, 100 = strong mismatch).
    * Does not measure whether the venue fits the user’s goal — see intentFitScore.
    */
   vibeGapScore: number;
   /**
    * How well the modeled venue matches the user’s inferred goal (0 = poor fit, 100 = strong fit).
-   * Independent of whether social disagrees with reviews.
+   * Independent of goal-fit scoring.
    */
   intentFitScore: number;
   intentFitVerdict: string;
@@ -204,13 +212,13 @@ export interface VibeGapScore {
   waitRiskScore: number;
   /** Whether reviews support laptop / work-friendly visits (0–100). */
   laptopFriendlyScore: number;
-  /** Higher = stronger mismatch between budget-friendly social framing and review price/value cues (0–100). */
+  /** Higher = stronger mismatch between budget-friendly framing cues and review price/value signals (0–100). */
   priceRealityScore: number;
-  /** One-line read of the VibeGap (social vs. reviews only). */
+  /** One-line read of the signal gap score (framing vs. reviews; not goal-fit). */
   verdict: string;
   hypeIndex: number;
   realityIndex: number;
-  /** Evidence for VibeGap Score — social narrative vs. review narrative. */
+  /** Evidence for the signal gap score — sample framing vs. review narrative. */
   vibeGapExplanationBullets: string[];
   /** Evidence for Intent Fit — user goal vs. what reviews + posts imply you will get. */
   intentFitExplanationBullets: string[];
@@ -243,7 +251,7 @@ export interface VibeReport {
   suggestPlaceDisambiguation: boolean;
   place: PlaceData;
   socialHighlights: SocialPost[];
-  /** One-paragraph read of what social is selling. */
+  /** One-paragraph read of the sample venue framing shown on cards. */
   socialSummary: string;
   /** What reviews consistently report. */
   realitySummary: string;
@@ -315,7 +323,7 @@ export type VibecheckResponse =
   | {
       mode: "compare";
       compare: CompareResult;
-      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.";
+      sourceLabel: "Uses Google Places and available review signals. Rankings are rule-based and goal-weighted.";
     }
   | {
       mode: "recommendations";
@@ -336,6 +344,6 @@ export type VibecheckResponse =
       detectedIntentLabel: string;
       locationCandidate: null;
       candidates: [];
-      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.";
+      sourceLabel: "Uses Google Places and available review signals. Rankings are rule-based and goal-weighted.";
       recoveryMessage: string;
     };

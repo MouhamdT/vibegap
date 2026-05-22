@@ -2,6 +2,7 @@
 
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
 import { selectedVenueGeographyLine } from "@/lib/format/geographyUi";
+import { REVIEW_EVIDENCE_HONESTY } from "@/lib/copy/productHonesty";
 import type { RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 export type RecommendationDrillDownPanelProps = {
@@ -11,9 +12,6 @@ export type RecommendationDrillDownPanelProps = {
   variant: "inline" | "sidebar";
   geography?: RecommendationGeography | null;
 };
-
-const PANEL_DATA_HONESTY =
-  "Based on available Google review signals. Social comparison is illustrative.";
 
 function isMeaningfulScore(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
@@ -73,6 +71,26 @@ export function RecommendationDrillDownPanel({
           {geography?.hasApproximateDistances && typeof c.distanceFromAnchorMeters === "number" ? (
             <p className="text-[9px] leading-snug text-stone-400">Distances are approximate.</p>
           ) : null}
+        </div>
+      ) : null}
+
+      {c.shortlistRole ? (
+        <div className="mt-3 rounded-md border border-stone-100 bg-white/80 px-3 py-2">
+          <p className="text-[9px] font-medium uppercase tracking-[0.12em] text-stone-400">Why this role</p>
+          <p className="mt-1 text-[11px] leading-relaxed text-stone-700">
+            {c.shortlistRole === "Best overall" &&
+              "Strongest combined fit in this shortlist after intent filtering, review signals, and your current style and tuning."}
+            {c.shortlistRole === "Safest choice" && "Higher confidence in available Google review signals versus peers at similar fit."}
+            {c.shortlistRole === "Closest to anchor" &&
+              (geography?.nearAnchorDisplayName
+                ? `Shortest approximate distance from ${geography.nearAnchorDisplayName} among ranked picks — distance does not override goal fit.`
+                : "Shortest approximate distance to your anchor among ranked picks — distance does not replace goal fit.")}
+            {c.shortlistRole === "Best value" && "Relatively lighter price level or stronger value cues in this batch for a budget-minded plan."}
+            {c.shortlistRole === "Fresh pick" &&
+              "Less review volume than the biggest names here, but still aligned with your plan in the current signals."}
+            {!["Best overall", "Safest choice", "Closest to anchor", "Best value", "Fresh pick"].includes(c.shortlistRole ?? "") &&
+              "This label highlights a useful angle on the same ranked set."}
+          </p>
         </div>
       ) : null}
 
@@ -146,7 +164,7 @@ export function RecommendationDrillDownPanel({
         </details>
       ) : null}
 
-      <p className="mt-3 text-[9px] leading-snug text-stone-400">{PANEL_DATA_HONESTY}</p>
+      <p className="mt-3 text-[9px] leading-snug text-stone-400">{REVIEW_EVIDENCE_HONESTY}</p>
     </section>
   );
 }

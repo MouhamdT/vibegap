@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { buildReviewEvidence } from "@/lib/ai/reviewEvidence";
+import { REVIEW_EVIDENCE_HONESTY } from "@/lib/copy/productHonesty";
 import type { PlaceData } from "@/lib/types/vibecheck";
 
 type ReviewEvidencePanelProps = {
@@ -11,11 +12,10 @@ type ReviewEvidencePanelProps = {
   showDataHonesty?: boolean;
 };
 
-const HONESTY =
-  "Based on available Google review signals. Social comparison is illustrative.";
+const HONESTY = REVIEW_EVIDENCE_HONESTY;
 
 const SNIPPET_UNAVAILABLE =
-  "Representative review snippets are not available for this venue. VibeGap is using detected review themes instead.";
+  "Representative review snippets are not available for this venue. This view uses detected review themes instead.";
 
 function snippetKindLabel(): string {
   return "Available review snippet";
@@ -84,7 +84,7 @@ export function ReviewEvidencePanel({
 
         {helpedRows.length > 0 ? (
           <div>
-            <p className={`${text2xs} font-medium text-stone-500`}>What helped the score</p>
+            <p className={`${text2xs} font-medium text-stone-500`}>Helped the score</p>
             <ul className={`mt-1.5 space-y-1 ${textXs} leading-relaxed text-stone-700`}>
               {helpedRows.map((line, i) => (
                 <li key={`h-${i}`} className="flex gap-2">

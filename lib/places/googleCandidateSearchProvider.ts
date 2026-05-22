@@ -37,7 +37,7 @@ export async function getGoogleCandidatePlaces(query: string, locationCandidate:
       },
       body: JSON.stringify({
         textQuery: `${intentQuery} in ${location}`,
-        pageSize: 6,
+        pageSize: 20,
       }),
     });
     if (!res.ok) return [];
@@ -48,7 +48,7 @@ export async function getGoogleCandidatePlaces(query: string, locationCandidate:
     if (!Array.isArray(places) || places.length === 0) return [];
 
     const candidates: PlaceData[] = [];
-    for (const raw of places.slice(0, 6)) {
+    for (const raw of places.slice(0, 20)) {
       if (!isRecord(raw)) continue;
       const resource = extractResourceName(raw as GooglePlaceApi);
       if (!resource) continue;
@@ -73,7 +73,7 @@ export async function getGoogleCandidatePlaces(query: string, locationCandidate:
       }
     }
 
-    return candidates.slice(0, 6);
+    return candidates.slice(0, 20);
   } catch {
     return [];
   }

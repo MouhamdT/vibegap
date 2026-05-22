@@ -9,6 +9,16 @@ import type {
 } from "@/lib/types/vibecheck";
 import { placeHasCoordinates } from "@/lib/maps/placeCoordinates";
 
+function googlePlaceIdFromPlace(place: PlaceData): string | undefined {
+  if (typeof place.googlePlaceId === "string" && place.googlePlaceId.trim()) {
+    return place.googlePlaceId.trim();
+  }
+  if (typeof place.id === "string" && place.id.startsWith("google:")) {
+    return place.id.slice("google:".length);
+  }
+  return undefined;
+}
+
 export type DecisionMapPinKind = "candidate" | "anchor" | "compareA" | "compareB";
 
 export type DecisionMapPin = {
@@ -18,6 +28,8 @@ export type DecisionMapPin = {
   name: string;
   lat: number;
   lng: number;
+  /** Google Place ID when known — used to exclude venues from landmark nearby results. */
+  googlePlaceId?: string;
   decisionLabel?: string;
   fitScore?: number;
   /** Labeled distance for UI (never a bare number). */
@@ -28,8 +40,10 @@ export type DecisionMapPin = {
   mainRisk?: string;
   /** Aggregated rating (1–5) when available (single-place tooltips). */
   rating?: number;
-  /** True when this pin is the primary selection (recommendation / single / compare winner). */
-  isSelected: boolean;
+  /** V30: curated shortlist label for map popup (recommendation). */
+  shortlistRole?: string;
+  /** Highlighted pin (selected venue / compare winner / single-place focus). */
+  isSelected?: boolean;
 };
 
 const ANCHOR_PIN_ID = "__vibegap_anchor__";
@@ -54,12 +68,14 @@ export function recommendationMapPins(
       name: c.place.name,
       lat: c.place.latitude!,
       lng: c.place.longitude!,
+      googlePlaceId: googlePlaceIdFromPlace(c.place),
       decisionLabel: c.decision.label,
       fitScore: c.fitScore,
       distanceFromAnchorLine,
       addressLine: c.place.address,
       mainRisk: c.mainRisk,
       isSelected: selectedPlaceId === c.place.id,
+      shortlistRole: c.shortlistRole,
     });
   });
 
@@ -123,6 +139,7 @@ export function singlePlaceMapPins(
       name: place.name,
       lat: place.latitude!,
       lng: place.longitude!,
+      googlePlaceId: googlePlaceIdFromPlace(place),
       decisionLabel,
       rating: place.averageRating,
       distanceFromAnchorLine,
@@ -163,6 +180,7 @@ export function compareMapPins(
       name: sideA.place.name,
       lat: sideA.place.latitude!,
       lng: sideA.place.longitude!,
+      googlePlaceId: googlePlaceIdFromPlace(sideA.place),
       decisionLabel: sideA.decision.label,
       fitScore: sideA.fitScore,
       addressLine: sideA.place.address,
@@ -178,6 +196,7 @@ export function compareMapPins(
       name: sideB.place.name,
       lat: sideB.place.latitude!,
       lng: sideB.place.longitude!,
+      googlePlaceId: googlePlaceIdFromPlace(sideB.place),
       decisionLabel: sideB.decision.label,
       fitScore: sideB.fitScore,
       addressLine: sideB.place.address,

@@ -36,10 +36,17 @@ export function RecommendationRankedShortlist({
   geography,
 }: RecommendationRankedShortlistProps) {
   const inlinePanelRef = useRef<HTMLDivElement | null>(null);
+  const rowElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
 
   useEffect(() => {
     if (!selectedPlaceId || desktopSplit) return;
     inlinePanelRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [selectedPlaceId, desktopSplit]);
+
+  useEffect(() => {
+    if (!selectedPlaceId || !desktopSplit) return;
+    const el = rowElsRef.current.get(selectedPlaceId);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [selectedPlaceId, desktopSplit]);
 
   return (
@@ -53,6 +60,10 @@ export function RecommendationRankedShortlist({
         return (
           <div
             key={c.place.id}
+            ref={(el) => {
+              if (el) rowElsRef.current.set(c.place.id, el);
+              else rowElsRef.current.delete(c.place.id);
+            }}
             role="listitem"
             className={`overflow-hidden rounded-lg border transition-colors ${
               isSelected
@@ -80,12 +91,27 @@ export function RecommendationRankedShortlist({
                 </span>
                 <span className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-stone-950">{c.place.name}</span>
               </div>
+              {c.shortlistRole ? (
+                <p className="mt-1 text-[10px] font-medium text-stone-600">{c.shortlistRole}</p>
+              ) : null}
               <p className="mt-1 text-[11px] text-stone-500">
                 <span className="font-medium text-stone-800">{c.place.averageRating.toFixed(1)}</span> / 5 ·{" "}
                 {c.place.reviewCount.toLocaleString()} reviews ·{" "}
                 <span className="font-medium text-stone-800">{"$".repeat(c.place.priceLevel)}</span>
                 <span className="text-stone-300"> · </span>
                 Fit {c.fitScore}
+                {c.intentQualityTier && c.intentQualityTier !== "acceptable" ? (
+                  <>
+                    <span className="text-stone-300"> · </span>
+                    <span className="text-stone-500">
+                      {c.intentQualityTier === "strong"
+                        ? "Strong intent match"
+                        : c.intentQualityTier === "weak"
+                          ? "Weak intent match"
+                          : "Poor fit"}
+                    </span>
+                  </>
+                ) : null}
                 {(() => {
                   const seg = shortlistGeographySegment(c, geography);
                   return seg ? (

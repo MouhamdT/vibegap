@@ -256,7 +256,7 @@ export function buildReviewReality(place: PlaceData, intent?: DetectedIntent): R
   const receipts = dedupeExcerpts([...place.positives, ...place.complaints]);
   const receiptsHonestyNote =
     receipts.length === 0
-      ? "Review text was available only as partial excerpts, so VibeGap summarized the themes instead of quoting them."
+      ? "Review text was available only as partial excerpts, so we summarized the themes instead of quoting them."
       : null;
 
   return {

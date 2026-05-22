@@ -4,6 +4,7 @@ import type {
   RecommendationInsights,
   RecommendationScoringWeight,
 } from "@/lib/types/vibecheck";
+import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 
 function looksStudyishPlace(place: { name: string; category: string }): boolean {
   const text = `${place.category} ${place.name}`.toLowerCase();
@@ -149,7 +150,7 @@ function bestAlternativeIfSentence(candidates: RankedCandidate[], intent: Detect
     return `Choose ${name} if you want a tighter value read and accept a bit more reservation or wait risk.`;
   }
   if (k === "luxury" || k === "date_night") {
-    return `Choose ${name} if you want a livelier, more social celebration vibe and accept more noise energy.`;
+    return `Choose ${name} if you want a livelier, buzzier celebration atmosphere and accept more noise energy.`;
   }
   if (k === "low_wait") {
     return `Choose ${name} if you want lower wait risk in the review snapshot and can flex on ambience or menu breadth.`;
@@ -173,8 +174,10 @@ export function buildRecommendationInsights(
   const strongestRisk =
     top?.mainRisk ?? "Signal depth across candidates is thinner than ideal for a high-confidence pick.";
 
-  const confidenceNote =
-    "Uses Google Places and available review signals where present. Social comparison is illustrative.";
+  const weakGate = candidates.some((c) => c.intentQualityTier === "weak" || c.intentQualityTier === "poor");
+  const confidenceNote = weakGate
+    ? `${PRODUCT_HONESTY_FULL} Ranked after a light intent-shape filter on place types and review themes — some picks are weaker matches but were the best available in this search area.`
+    : PRODUCT_HONESTY_FULL;
 
   return {
     topPickName: top?.place.name ?? `Top pick in ${locationCandidate}`,

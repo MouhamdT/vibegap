@@ -12,6 +12,8 @@ import {
   weightsEqual,
   type PriorityWeights,
 } from "@/lib/ai/priorityTuning";
+import { applyRecommendationStyleRescore, type RecommendationStyleMode } from "@/lib/ai/recommendationStyleRank";
+import { assignShortlistRoles } from "@/lib/ai/shortlistRoles";
 import { DecisionMapEntry } from "@/components/DecisionMapEntry";
 import { assignGeographySignalLines } from "@/lib/geo/enrichRecommendationGeography";
 import { useMinWidthLg } from "@/lib/hooks/useMinWidthLg";
@@ -44,11 +46,16 @@ function CandidateResultsBody({
   const defaultWeights = useMemo(() => getDefaultPriorityWeights(detectedIntent), [detectedIntent]);
   const [weights, setWeights] = useState<PriorityWeights>(defaultWeights);
   const [userAdjusted, setUserAdjusted] = useState(false);
+  const [recStyle, setRecStyle] = useState<RecommendationStyleMode>("balanced");
 
   const rankedCandidates = useMemo(() => {
-    const base = weightsEqual(weights, defaultWeights) ? candidates : applyPriorityWeightsToCandidates(candidates, weights);
-    return assignGeographySignalLines(base, geography?.nearAnchorDisplayName ?? null);
-  }, [candidates, weights, defaultWeights, geography?.nearAnchorDisplayName]);
+    const base = weightsEqual(weights, defaultWeights)
+      ? candidates
+      : applyPriorityWeightsToCandidates(candidates, weights);
+    const styled = applyRecommendationStyleRescore(base, recStyle);
+    const withGeo = assignGeographySignalLines(styled, geography?.nearAnchorDisplayName ?? null);
+    return assignShortlistRoles(withGeo, detectedIntent, geography, recStyle);
+  }, [candidates, weights, defaultWeights, recStyle, geography, detectedIntent]);
 
   const insights = buildRecommendationInsights(rankedCandidates, detectedIntent, locationCandidate);
   const isDesktop = useMinWidthLg();
@@ -66,7 +73,8 @@ function CandidateResultsBody({
       : applyPriorityWeightsToCandidates(candidates, merged);
     setUserAdjusted(true);
     setWeights(merged);
-    setSelectedPlaceId(nextRanked[0]?.place.id ?? null);
+    const reordered = applyRecommendationStyleRescore(nextRanked, recStyle);
+    setSelectedPlaceId(reordered[0]?.place.id ?? null);
   };
 
   const handleReset = () => {
@@ -74,6 +82,13 @@ function CandidateResultsBody({
     setUserAdjusted(false);
     setSelectedPlaceId(candidates[0]?.place.id ?? null);
   };
+
+  const styleBlurb =
+    recStyle === "reliable"
+      ? "Prioritizing established places with stronger review coverage and lower risk."
+      : recStyle === "discovery"
+        ? "Allowing less obvious places when they strongly match the plan."
+        : "Balancing intent fit, review confidence, and practical tradeoffs.";
 
   const selectedCandidate = rankedCandidates.find((c) => c.place.id === activeSelectedId) ?? null;
   const selectedRank = selectedCandidate ? rankedCandidates.indexOf(selectedCandidate) + 1 : 0;
@@ -113,6 +128,32 @@ function CandidateResultsBody({
             {anchorNote ? (
               <p className="max-w-2xl text-[11px] font-medium leading-relaxed text-stone-600">{anchorNote}</p>
             ) : null}
+            <p className="max-w-2xl text-[11px] leading-relaxed text-stone-500">{insights.confidenceNote}</p>
+            <p className="max-w-2xl text-[11px] leading-relaxed text-stone-600">{styleBlurb}</p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <span className="text-[10px] font-medium uppercase tracking-wide text-stone-400">Recommendation style</span>
+              {(["reliable", "balanced", "discovery"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => {
+                    setRecStyle(mode);
+                    const base = weightsEqual(weights, defaultWeights)
+                      ? candidates
+                      : applyPriorityWeightsToCandidates(candidates, weights);
+                    const next = applyRecommendationStyleRescore(base, mode);
+                    setSelectedPlaceId(next[0]?.place.id ?? null);
+                  }}
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition ${
+                    recStyle === mode
+                      ? "border-stone-900 bg-stone-900 text-white"
+                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"
+                  }`}
+                >
+                  {mode === "reliable" ? "Reliable" : mode === "balanced" ? "Balanced" : "Discovery"}
+                </button>
+              ))}
+            </div>
             {decisionMapCanRender ? (
               <div className="pt-1">
                 <DecisionMapEntry

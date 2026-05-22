@@ -7,6 +7,7 @@ import {
   TUNABLE_SLIDER_LABELS,
   type PriorityWeights,
 } from "@/lib/ai/priorityTuning";
+import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 
 function mergeAtmosphere(next: PriorityWeights, defaultWeights: PriorityWeights): PriorityWeights {
   return { ...next, atmosphere: defaultWeights.atmosphere };
@@ -91,7 +92,7 @@ export function PriorityTuningPanel({
             </div>
 
             <p className="mt-2 text-[10px] leading-relaxed text-stone-500">
-              Rankings update locally. Social comparison is illustrative.
+              Rankings update locally. {PRODUCT_HONESTY_FULL}
             </p>
 
             <div className="mt-2.5 space-y-2">

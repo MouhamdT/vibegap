@@ -6,6 +6,7 @@ import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { tryLandmarkGoalRecommendations } from "@/lib/ai/landmarkAnchorRouting";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
 import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
+import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 import { enrichRecommendationGeography } from "@/lib/geo/enrichRecommendationGeography";
 import { getGoogleCandidatePlaces } from "@/lib/places/googleCandidateSearchProvider";
 import { connection, NextResponse } from "next/server";
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       mode: "compare",
       compare,
-      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
+      sourceLabel: PRODUCT_HONESTY_FULL,
     });
   }
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       anchorNote: landmarkRecommendations.anchorNote,
       geography,
       candidates,
-      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
+      sourceLabel: PRODUCT_HONESTY_FULL,
       recoveryMessage: null,
     });
   }
@@ -105,7 +106,7 @@ export async function POST(request: Request) {
       anchorNote,
       geography,
       candidates: rankedWithGeo,
-      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
+      sourceLabel: PRODUCT_HONESTY_FULL,
       recoveryMessage: null,
     });
   }
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       detectedIntentLabel: intent.label,
       locationCandidate: null,
       candidates: [],
-      sourceLabel: "Uses Google Places and available review signals. Social comparison is illustrative.",
+      sourceLabel: PRODUCT_HONESTY_FULL,
       recoveryMessage:
         "I couldn't find a confident match. Try adding a city, neighborhood, or landmark.",
     });
