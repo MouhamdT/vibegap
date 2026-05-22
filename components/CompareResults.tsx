@@ -8,9 +8,12 @@ import {
   weightsEqual,
   type PriorityWeights,
 } from "@/lib/ai/priorityTuning";
+import { DecisionMapEntry } from "@/components/DecisionMapEntry";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
 import { buildCompareReviewSummary } from "@/lib/ai/reviewReality";
-import type { CompareFactorRow, ComparePlaceSide, CompareResult, DetectedIntent } from "@/lib/types/vibecheck";
+import { compareMapPins } from "@/lib/maps/decisionMapModel";
+import { placeHasCoordinates } from "@/lib/maps/placeCoordinates";
+import type { CompareFactorRow, ComparePlaceSide, CompareResult } from "@/lib/types/vibecheck";
 
 type CompareResultsProps = {
   compare: CompareResult;
@@ -156,6 +159,19 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
       ? displayCompare.sideA.place.name
       : displayCompare.sideB.place.name;
 
+  const compareMapCanRender =
+    placeHasCoordinates(displayCompare.sideA.place) && placeHasCoordinates(displayCompare.sideB.place);
+
+  const comparePins = useMemo(
+    () => compareMapPins(displayCompare.sideA, displayCompare.sideB, displayCompare.winnerPlaceId),
+    [displayCompare.sideA, displayCompare.sideB, displayCompare.winnerPlaceId],
+  );
+
+  const compareMapFooter =
+    displayCompare.winnerPlaceId === displayCompare.sideA.place.id
+      ? `Recommended: ${displayCompare.sideA.place.name}`
+      : `Recommended: ${displayCompare.sideB.place.name}`;
+
   const factorRowsWithReality = useMemo(() => {
     const realityRow: CompareFactorRow = {
       factor: "Review reality",
@@ -188,6 +204,18 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
             </p>
             {compare.partialResolveMessage ? (
               <p className="text-[11px] font-medium text-amber-900/90">{compare.partialResolveMessage}</p>
+            ) : null}
+            {compareMapCanRender ? (
+              <div className="pt-1">
+                <DecisionMapEntry
+                  canRender={compareMapCanRender}
+                  pins={comparePins}
+                  title="Compare locations"
+                  subtitle={compare.goalDisplay}
+                  mapMode="compare"
+                  footerPrimaryLine={compareMapFooter}
+                />
+              </div>
             ) : null}
           </div>
           <PriorityTuningPanel

@@ -25,7 +25,7 @@ export type ReviewEvidenceModel = {
   helped: string[];
   hurt: string[];
   snippets: ReviewEvidenceSnippet[];
-  /** When true, show the “no detailed snippets” honesty line (themes/bullets may still exist). */
+  /** When true, show the “no real snippets” honesty line (themes/bullets may still exist). */
   showSnippetFallbackNote: boolean;
   hasStructuredEvidence: boolean;
 };
@@ -93,6 +93,20 @@ function previewForSnippet(full: string, maxLen: number): string {
   return slice.trim();
 }
 
+/** Model / summary lines that are not quotable review excerpts. */
+function isSyntheticReviewSummaryLine(text: string): boolean {
+  const t = text.toLowerCase();
+  if (/\bfetched sample\b/.test(t)) return true;
+  if (/\bgoogle reviews\b/.test(t) && /\b(but|however|;)\b/.test(t)) return true;
+  if (/no single repeating/.test(t)) return true;
+  if (/no dominant complaint/.test(t)) return true;
+  if (/positive notes, but no\b/.test(t)) return true;
+  if (/mixed;\s*no\b/.test(t)) return true;
+  if (/in the available signals\b/.test(t)) return true;
+  if (/\bwe could parse\b/.test(t)) return true;
+  return false;
+}
+
 function themeSupplementBullets(place: PlaceData, want: "positive" | "negative", cap: number): string[] {
   const out: string[] = [];
   for (const th of sortedThemes(place)) {
@@ -101,10 +115,21 @@ function themeSupplementBullets(place: PlaceData, want: "positive" | "negative",
     if (want === "negative" && th.sentiment !== "negative") continue;
     const label = themeShortLabel(th);
     const level = strengthToLevel(th.strength);
+    const lc = label.toLowerCase();
     if (want === "positive") {
-      out.push(`Reviewers often highlight ${label} (${level} signal in this snapshot).`);
+      if (level === "High") {
+        out.push(`Review themes lean positive on ${lc}.`);
+      } else if (level === "Medium") {
+        out.push(`Some review signals support ${lc}.`);
+      } else {
+        out.push(`${label} reads slightly positive, but only weakly in the snapshot.`);
+      }
+    } else if (level === "High") {
+      out.push(`${label} stands out as a clearer watch-out in reviews.`);
+    } else if (level === "Medium") {
+      out.push(`${label} shows as a moderate watch-out in review themes.`);
     } else {
-      out.push(`Reviewers often flag ${label} (${level} emphasis in this snapshot).`);
+      out.push(`No strong ${lc} pattern showed up in what we could parse.`);
     }
   }
   return out;
@@ -114,8 +139,7 @@ function buildHelped(place: PlaceData): string[] {
   const max = 4;
   const fromLines = place.positives
     .map((p) => bulletFromLine(p, 200))
-    .filter((p) => p.length >= 12)
-    .slice(0, max);
+    .filter((p) => p.length >= 12 && !isSyntheticReviewSummaryLine(p));
   if (fromLines.length >= 2) return fromLines.slice(0, max);
   const merged = [...fromLines, ...themeSupplementBullets(place, "positive", max - fromLines.length)];
   return merged.slice(0, max);
@@ -125,8 +149,7 @@ function buildHurt(place: PlaceData): string[] {
   const max = 4;
   const fromLines = place.complaints
     .map((c) => bulletFromLine(c, 200))
-    .filter((c) => c.length >= 12)
-    .slice(0, max);
+    .filter((c) => c.length >= 12 && !isSyntheticReviewSummaryLine(c));
   if (fromLines.length >= 2) return fromLines.slice(0, max);
   const merged = [...fromLines, ...themeSupplementBullets(place, "negative", max - fromLines.length)];
   return merged.slice(0, max);
@@ -135,7 +158,7 @@ function buildHurt(place: PlaceData): string[] {
 function buildSnippets(place: PlaceData): ReviewEvidenceSnippet[] {
   const raw = [...place.positives, ...place.complaints]
     .map((s) => s.replace(/\s+/g, " ").trim())
-    .filter((s) => s.length >= 28);
+    .filter((s) => s.length >= 28 && !isSyntheticReviewSummaryLine(s) && isCleanReviewExcerpt(s));
 
   const seen = new Set<string>();
   const deduped: string[] = [];
@@ -146,20 +169,14 @@ function buildSnippets(place: PlaceData): ReviewEvidenceSnippet[] {
     deduped.push(t);
   }
 
-  const scored = deduped.map((text) => ({
-    text,
-    prefer: isCleanReviewExcerpt(text),
-  }));
-  scored.sort((a, b) => Number(b.prefer) - Number(a.prefer));
-
   const previewMax = 150;
   const out: ReviewEvidenceSnippet[] = [];
   let i = 0;
-  for (const { text } of scored) {
+  for (const text of deduped) {
     if (out.length >= 3) break;
     const preview = previewForSnippet(text, previewMax);
     const canExpand = preview.length + 12 < text.length;
-    const kind: ReviewEvidenceSnippetKind = isCleanReviewExcerpt(text) ? "sample_signal" : "available_snippet";
+    const kind: ReviewEvidenceSnippetKind = "available_snippet";
     out.push({
       id: `sn-${i++}-${normalizeKey(text).slice(0, 24)}`,
       preview,
@@ -173,7 +190,7 @@ function buildSnippets(place: PlaceData): ReviewEvidenceSnippet[] {
 
 /**
  * Derives compact review-evidence copy from existing `PlaceData` fields only.
- * Does not invent quotes; snippets are subsets of positives/complaints.
+ * Snippets are only included when text passes excerpt hygiene (no invented quotes).
  */
 export function buildReviewEvidence(place: PlaceData): ReviewEvidenceModel {
   const themes: ReviewEvidenceThemeRow[] = sortedThemes(place).map((th) => ({

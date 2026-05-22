@@ -53,10 +53,7 @@ export function PriorityTuningPanel({
   };
 
   return (
-    <div
-      ref={rootRef}
-      className="flex w-full min-w-0 flex-col gap-0.5 self-start sm:max-w-[22.5rem] sm:items-end lg:ml-auto"
-    >
+    <div ref={rootRef} className="flex w-full min-w-0 flex-col gap-0.5 self-start sm:items-end lg:ml-auto">
       <div className="relative w-full min-w-0 sm:w-fit sm:max-w-full sm:shrink-0 sm:self-end">
         <button
           type="button"
@@ -65,7 +62,7 @@ export function PriorityTuningPanel({
           onClick={() => setOpen((v) => !v)}
           className="inline-flex w-fit max-w-full shrink-0 items-center gap-1 rounded-md border border-stone-200/70 bg-white px-2.5 py-1.5 text-[11px] font-medium text-stone-800 shadow-sm transition hover:border-stone-300 hover:bg-stone-50/90"
         >
-          <span>Tune ranking</span>
+          <span className="whitespace-nowrap">Tune ranking</span>
           <span className="text-stone-400" aria-hidden>
             {open ? "▴" : "▾"}
           </span>
@@ -78,74 +75,74 @@ export function PriorityTuningPanel({
         {open ? (
           <div
             id={panelId}
-            className="mt-2 w-full min-w-0 max-w-full rounded-lg border border-stone-200/70 bg-white p-2 shadow-md sm:p-2.5 lg:absolute lg:right-0 lg:top-[calc(100%+8px)] lg:z-[80] lg:mt-0 lg:w-[min(22.5rem,calc(100vw-2rem))] lg:shadow-lg"
+            className="mt-2 w-full max-w-none rounded-lg border border-stone-200/70 bg-white p-3 shadow-md sm:max-w-none lg:absolute lg:right-0 lg:top-[calc(100%+8px)] lg:z-[80] lg:mt-0 lg:w-[clamp(320px,28vw,380px)] lg:min-w-[320px] lg:max-w-[380px] lg:p-3 lg:shadow-lg"
             role="dialog"
             aria-label="Tune ranking"
           >
-          <div className="flex items-start justify-between gap-2 border-b border-stone-100 pb-1.5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-stone-500">Tune ranking</p>
+            <div className="flex items-start justify-between gap-3 border-b border-stone-100 pb-2">
+              <p className="text-sm font-semibold tracking-tight text-stone-950 whitespace-nowrap">Tune ranking</p>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-medium text-stone-500 transition hover:bg-stone-50 hover:text-stone-800"
+              >
+                Close
+              </button>
+            </div>
+
+            <p className="mt-2 text-[10px] leading-relaxed text-stone-500">
+              Rankings update locally. Social comparison is illustrative.
+            </p>
+
+            <div className="mt-2.5 space-y-2">
+              {TUNABLE_PRIORITY_KEYS.map((key) => (
+                <div key={key} className="space-y-0.5">
+                  <div className="flex items-center justify-between gap-3 text-[11px] text-stone-700">
+                    <label
+                      htmlFor={`${panelId}-${key}`}
+                      className="min-w-0 font-medium"
+                      title={TUNABLE_SLIDER_HINTS[key]}
+                    >
+                      {TUNABLE_SLIDER_LABELS[key]}
+                    </label>
+                    <span className="shrink-0 tabular-nums text-stone-500">{weights[key]}</span>
+                  </div>
+                  <input
+                    id={`${panelId}-${key}`}
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={weights[key]}
+                    onChange={(e) => handleSliderChange(key, Number(e.target.value))}
+                    className="vibegap-tune-range h-1.5 w-full min-w-0 cursor-pointer accent-stone-700"
+                    title={TUNABLE_SLIDER_HINTS[key]}
+                  />
+                </div>
+              ))}
+            </div>
+
             <button
               type="button"
-              onClick={() => setOpen(false)}
-              className="shrink-0 text-[10px] font-medium text-stone-500 hover:text-stone-800"
+              onClick={() => {
+                onReset();
+                setOpen(false);
+              }}
+              className="mt-3 text-[11px] font-medium text-stone-600 underline decoration-stone-300 underline-offset-2 hover:text-stone-900"
             >
-              Close
+              Reset to detected goal
             </button>
-          </div>
 
-          <p className="mt-1.5 text-[9px] leading-snug text-stone-500">
-            Rankings update locally. Social comparison is illustrative.
-          </p>
-
-          <div className="mt-1.5 space-y-1.5">
-            {TUNABLE_PRIORITY_KEYS.map((key) => (
-              <div key={key} className="space-y-0">
-                <div className="flex items-center justify-between gap-2 text-[10px] text-stone-700">
-                  <label
-                    htmlFor={`${panelId}-${key}`}
-                    className="min-w-0 font-medium"
-                    title={TUNABLE_SLIDER_HINTS[key]}
-                  >
-                    {TUNABLE_SLIDER_LABELS[key]}
-                  </label>
-                  <span className="shrink-0 tabular-nums text-stone-500">{weights[key]}</span>
-                </div>
-                <input
-                  id={`${panelId}-${key}`}
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={weights[key]}
-                  onChange={(e) => handleSliderChange(key, Number(e.target.value))}
-                  className="vibegap-tune-range h-1 w-full min-w-0 cursor-pointer accent-stone-700"
-                  title={TUNABLE_SLIDER_HINTS[key]}
-                />
-              </div>
-            ))}
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              onReset();
-              setOpen(false);
-            }}
-            className="mt-2 text-[10px] font-medium text-stone-600 underline decoration-stone-300 underline-offset-2 hover:text-stone-900"
-          >
-            Reset to detected goal
-          </button>
-
-          {rankingNote ? (
-            <p className="mt-1.5 border-t border-stone-100 pt-1.5 text-[9px] leading-snug text-stone-500" role="status">
-              {rankingNote}
-            </p>
-          ) : null}
-          {winnerUpdatedNote ? (
-            <p className="mt-1 text-[9px] font-medium leading-snug text-stone-600" role="status">
-              {winnerUpdatedNote}
-            </p>
-          ) : null}
+            {rankingNote ? (
+              <p className="mt-2 border-t border-stone-100 pt-2 text-[10px] leading-relaxed text-stone-500" role="status">
+                {rankingNote}
+              </p>
+            ) : null}
+            {winnerUpdatedNote ? (
+              <p className="mt-1.5 text-[10px] font-medium leading-snug text-stone-600" role="status">
+                {winnerUpdatedNote}
+              </p>
+            ) : null}
           </div>
         ) : null}
       </div>

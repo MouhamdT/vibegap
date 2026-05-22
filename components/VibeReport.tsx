@@ -2,6 +2,7 @@ import type { VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { singlePlaceGeographyLines } from "@/lib/format/geographyUi";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
+import { VibeReportDecisionMap } from "@/components/VibeReportDecisionMap";
 import { ScoreCard } from "@/components/ScoreCard";
 import { VisualGrid } from "@/components/VisualGrid";
 
@@ -88,6 +89,7 @@ export function VibeReport({ report }: VibeReportProps) {
             );
           })()
         ) : null}
+        <VibeReportDecisionMap report={report} />
       </header>
 
       <section className="rounded-lg bg-white/95 px-3 py-3 ring-1 ring-stone-200/50 sm:px-3.5 sm:py-3.5">

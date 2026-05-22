@@ -14,11 +14,11 @@ type ReviewEvidencePanelProps = {
 const HONESTY =
   "Based on available Google review signals. Social comparison is illustrative.";
 
-const SNIPPET_FALLBACK =
-  "Detailed review snippets are not available for this venue, but repeated review themes were detected.";
+const SNIPPET_UNAVAILABLE =
+  "Representative review snippets are not available for this venue. VibeGap is using detected review themes instead.";
 
-function kindLabel(kind: "sample_signal" | "available_snippet"): string {
-  return kind === "sample_signal" ? "Sample signal" : "Available snippet";
+function snippetKindLabel(): string {
+  return "Available review snippet";
 }
 
 export function ReviewEvidencePanel({
@@ -68,11 +68,11 @@ export function ReviewEvidencePanel({
         {themeRows.length > 0 ? (
           <div>
             <p className={`${text2xs} font-medium text-stone-500`}>Review themes</p>
-            <ul className={`mt-1.5 flex flex-wrap gap-1.5 ${compact ? "" : "gap-2"}`}>
+            <ul className={`mt-1.5 flex flex-wrap ${compact ? "gap-1" : "gap-1.5"}`}>
               {themeRows.map((row) => (
                 <li
                   key={row.id}
-                  className={`inline-flex max-w-full items-center gap-1.5 rounded-full border border-stone-200/80 bg-stone-50/80 ${compact ? "px-2 py-0.5" : "px-2.5 py-1"} ${textXs} text-stone-700`}
+                  className={`inline-flex max-w-full items-center gap-1 rounded-full border border-stone-200/80 bg-stone-50/80 ${compact ? "px-1.5 py-0.5" : "px-2 py-0.5"} ${textXs} text-stone-700`}
                 >
                   <span className="min-w-0 truncate font-medium text-stone-800">{row.label}</span>
                   <span className="shrink-0 text-stone-500">{row.level}</span>
@@ -98,7 +98,7 @@ export function ReviewEvidencePanel({
 
         {hurtRows.length > 0 ? (
           <div>
-            <p className={`${text2xs} font-medium text-stone-500`}>What hurt the score</p>
+            <p className={`${text2xs} font-medium text-stone-500`}>Watch-outs</p>
             <ul className={`mt-1.5 space-y-1 ${textXs} leading-relaxed text-stone-700`}>
               {hurtRows.map((line, i) => (
                 <li key={`r-${i}`} className="flex gap-2">
@@ -120,7 +120,7 @@ export function ReviewEvidencePanel({
                 const body = showFull ? sn.full : sn.preview;
                 return (
                   <li key={sn.id} className="rounded-md border border-stone-100 bg-stone-50/40 px-2 py-1.5">
-                    <p className={`${text2xs} text-stone-400`}>{kindLabel(sn.kind)}</p>
+                    <p className={`${text2xs} text-stone-400`}>{snippetKindLabel()}</p>
                     <p className={`mt-1 ${textXs} leading-relaxed text-stone-700`}>{body}</p>
                     {sn.canExpand ? (
                       <button
@@ -140,10 +140,8 @@ export function ReviewEvidencePanel({
               })}
             </ul>
           </div>
-        ) : null}
-
-        {evidence.showSnippetFallbackNote ? (
-          <p className={`${textXs} leading-relaxed text-stone-600`}>{SNIPPET_FALLBACK}</p>
+        ) : evidence.showSnippetFallbackNote ? (
+          <p className={`${textXs} leading-relaxed text-stone-600`}>{SNIPPET_UNAVAILABLE}</p>
         ) : null}
 
         {showDataHonesty ? <p className={`${text2xs} leading-snug text-stone-400`}>{HONESTY}</p> : null}

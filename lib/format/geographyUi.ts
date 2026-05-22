@@ -1,21 +1,16 @@
+import { recommendationDistanceLabel } from "@/lib/geo/recommendationDistanceLabel";
 import { formatDistance } from "@/lib/geo/distance";
 import type { RankedCandidate, RecommendationGeography, SinglePlaceGeography } from "@/lib/types/vibecheck";
 
-function truncateLabel(label: string, max = 26): string {
-  const t = label.trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, Math.max(0, max - 1))}…`;
-}
-
-/** Compact segment for shortlist meta row (e.g. "280m from Trevi Fountain"). */
+/** Compact segment for shortlist meta row (labeled distance only). */
 export function shortlistGeographySegment(
   candidate: RankedCandidate,
   geography: RecommendationGeography | null | undefined,
 ): string | null {
   if (typeof candidate.distanceFromAnchorMeters !== "number" || !geography) return null;
-  const label = truncateLabel(geography.nearAnchorDisplayName ?? geography.searchAreaLabel);
-  if (!label) return null;
-  return `${formatDistance(candidate.distanceFromAnchorMeters)} from ${label}`;
+  const line = recommendationDistanceLabel(candidate.distanceFromAnchorMeters, geography);
+  if (!line) return null;
+  return line.length > 56 ? `${line.slice(0, 53)}…` : line;
 }
 
 /** Selected-panel / header geography line. */
@@ -24,8 +19,8 @@ export function selectedVenueGeographyLine(
   geography: RecommendationGeography | null | undefined,
 ): string | null {
   if (typeof candidate.distanceFromAnchorMeters === "number" && geography) {
-    const label = geography.nearAnchorDisplayName ?? geography.searchAreaLabel;
-    if (label.trim()) return `${formatDistance(candidate.distanceFromAnchorMeters)} from ${label.trim()}`;
+    const line = recommendationDistanceLabel(candidate.distanceFromAnchorMeters, geography);
+    if (line) return line;
   }
   if (geography?.nearAnchorDisplayName?.trim() && candidate.distanceFromAnchorMeters == null) {
     return `Searching near ${geography.nearAnchorDisplayName.trim()}`;
@@ -37,11 +32,19 @@ export function selectedVenueGeographyLine(
 }
 
 export function singlePlaceGeographyLines(geo: SinglePlaceGeography): { primary: string | null; secondary: string | null } {
-  if (typeof geo.distanceFromAnchorMeters === "number" && geo.nearAnchorDisplayName?.trim()) {
-    return {
-      primary: `${formatDistance(geo.distanceFromAnchorMeters)} from ${geo.nearAnchorDisplayName.trim()}`,
-      secondary: "Distances are approximate.",
-    };
+  if (typeof geo.distanceFromAnchorMeters === "number") {
+    if (geo.nearAnchorDisplayName?.trim()) {
+      return {
+        primary: `${formatDistance(geo.distanceFromAnchorMeters)} from ${geo.nearAnchorDisplayName.trim()}`,
+        secondary: "Distances are approximate.",
+      };
+    }
+    if (geo.searchAreaLabel?.trim()) {
+      return {
+        primary: `Approx. ${formatDistance(geo.distanceFromAnchorMeters)} from search center (${geo.searchAreaLabel.trim()})`,
+        secondary: "Distances are approximate.",
+      };
+    }
   }
   if (geo.nearAnchorDisplayName?.trim() && geo.distanceFromAnchorMeters == null) {
     return { primary: `Searching near ${geo.nearAnchorDisplayName.trim()}`, secondary: null };

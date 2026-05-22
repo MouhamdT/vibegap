@@ -12,8 +12,11 @@ import {
   weightsEqual,
   type PriorityWeights,
 } from "@/lib/ai/priorityTuning";
+import { DecisionMapEntry } from "@/components/DecisionMapEntry";
 import { assignGeographySignalLines } from "@/lib/geo/enrichRecommendationGeography";
 import { useMinWidthLg } from "@/lib/hooks/useMinWidthLg";
+import { formatRecommendationMapFooter } from "@/lib/maps/formatRecommendationMapFooter";
+import { recommendationMapCanRender, recommendationMapPins } from "@/lib/maps/decisionMapModel";
 import type { DetectedIntent, RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 type CandidateResultsProps = {
@@ -75,29 +78,66 @@ function CandidateResultsBody({
   const selectedCandidate = rankedCandidates.find((c) => c.place.id === activeSelectedId) ?? null;
   const selectedRank = selectedCandidate ? rankedCandidates.indexOf(selectedCandidate) + 1 : 0;
 
+  const decisionMapPins = useMemo(
+    () => recommendationMapPins(rankedCandidates, activeSelectedId, geography),
+    [rankedCandidates, activeSelectedId, geography],
+  );
+
+  const decisionMapCanRender = useMemo(
+    () => recommendationMapCanRender(rankedCandidates, geography),
+    [rankedCandidates, geography],
+  );
+
+  const decisionMapSubtitle = useMemo(() => {
+    const anchorLabel = nearAnchorName || geography?.nearAnchorDisplayName;
+    if (typeof anchorLabel === "string" && anchorLabel.trim()) {
+      return `Near ${anchorLabel.trim()}`;
+    }
+    return "Ranked venues and location context.";
+  }, [nearAnchorName, geography?.nearAnchorDisplayName]);
+
+  const decisionMapFooter = selectedCandidate
+    ? formatRecommendationMapFooter(selectedCandidate, selectedRank, geography)
+    : null;
+
   return (
     <section className="space-y-3" aria-label="Recommended places">
       <header className="border-b border-stone-200/50 pb-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-          <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-8 lg:gap-y-0">
+          <div className="min-w-0 max-w-full space-y-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">Recommendation mode</p>
-            <h2 className="text-balance text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">
+            <h2 className="max-w-full text-pretty text-lg font-semibold tracking-tight text-stone-950 sm:text-xl">
               Best matches for {detectedIntent.label}
               {nearAnchorName ? ` near ${nearAnchorName}` : ` in ${locationCandidate}`}
             </h2>
             {anchorNote ? (
               <p className="max-w-2xl text-[11px] font-medium leading-relaxed text-stone-600">{anchorNote}</p>
             ) : null}
+            {decisionMapCanRender ? (
+              <div className="pt-1">
+                <DecisionMapEntry
+                  canRender={decisionMapCanRender}
+                  pins={decisionMapPins}
+                  title="Decision map"
+                  subtitle={decisionMapSubtitle}
+                  mapMode="recommendation"
+                  onSelectVenueId={setSelectedPlaceId}
+                  footerPrimaryLine={decisionMapFooter}
+                />
+              </div>
+            ) : null}
           </div>
           {rankedCandidates.length > 0 ? (
-            <PriorityTuningPanel
-              weights={weights}
-              defaultWeights={defaultWeights}
-              onWeightsChange={handleWeightsChange}
-              onReset={handleReset}
-              rankingNote={userAdjusted ? "Ranking updated locally." : null}
-              prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
-            />
+            <div className="w-full shrink-0 lg:w-auto lg:max-w-[min(380px,100%)] lg:justify-self-end">
+              <PriorityTuningPanel
+                weights={weights}
+                defaultWeights={defaultWeights}
+                onWeightsChange={handleWeightsChange}
+                onReset={handleReset}
+                rankingNote={userAdjusted ? "Ranking updated locally." : null}
+                prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
+              />
+            </div>
           ) : null}
         </div>
       </header>
