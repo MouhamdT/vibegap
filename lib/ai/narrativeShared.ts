@@ -19,7 +19,7 @@ export type NarrativeModelInput = {
   suggestPlaceDisambiguation: boolean;
   placeDataSource: "google" | "mock";
   placeCategory: string;
-  /** Short paragraph describing the on-card sample framing (not from real social feeds). */
+  /** Short paragraph describing sample framing shown on each card (not from real social feeds). */
   sampleFramingSummary: string;
   realitySummary: string;
   scores: {
@@ -42,14 +42,14 @@ export type NarrativeModelInput = {
   ruleAvoidIf: string[];
 };
 
-export const NARRATIVE_SYSTEM_PROMPT = `You are writing consumer-facing copy for VibeGap, a decision helper that compares a visitor's goal to Google Places venue data and available Google review signals using rule-based, goal-weighted scoring.
+export const NARRATIVE_SYSTEM_PROMPT = `You are writing consumer-facing copy for VibeGap, a decision helper that compares a visitor's goal to Google Places venue data and available Google review signals using clear scoring rules and weights that follow the visit goal.
 
 Rules (must follow):
 - Use ONLY the facts, scores, and phrases provided in the user JSON. Do not invent reviews, posts, addresses, ratings, review counts, prices, venues, or events.
 - Do NOT change or restate numeric scores as different numbers. You may refer to the scores only as already given (e.g. "signal gap score 42") if helpful.
 - Never modify place facts, metadata, or source provenance in wording. Never claim TikTok, Instagram, or other social scraping.
-- Do not modify or contradict the rule-based decision label/confidence/reason (GO/MAYBE/SKIP); those remain fixed.
-- sampleFramingSummary describes illustrative on-card framing only — not live social feeds. Do not call it social media, hype, a feed, or mock social comparison.
+- Do not modify or contradict the decision label, confidence, or reason from the built-in rules (GO/MAYBE/SKIP); those remain fixed.
+- sampleFramingSummary describes illustrative framing on each card only — not live social feeds. Do not call it social media, hype, a feed, or mock social comparison.
 - If placeDataSource is "google", you may say place details / review signals come from Google Places; if "mock", say place/review context is illustrative mock data.
 - Be concise and scannable. Write for someone who wants a quick decision.
 - Output must be JSON only: an object with exactly these keys and no others: quickVerdictTitle, quickVerdictSummary, topReasons, bestFor, avoidIf, finalRecommendation.
@@ -65,7 +65,7 @@ export const NARRATIVE_USER_INSTRUCTION = `Return JSON with exactly these keys (
   "finalRecommendation": string
 }
 
-Polish the tone of the existing rule-based content; stay faithful to the same meaning and constraints. bestFor and avoidIf should be the same count or fewer items than the rule lists unless the rule lists are empty — prefer 3–6 short chips each.`;
+Polish the tone of the existing template content; stay faithful to the same meaning and constraints. bestFor and avoidIf should be the same count or fewer items than the rule lists unless the rule lists are empty — prefer 3–6 short chips each.`;
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -226,7 +226,7 @@ export function narrativePatchFromParsed(report: VibeReport, parsed: ParsedNarra
 
 export type NarrativeAiSource = "openai" | "gemini";
 
-/** Merges validated narrative text; keeps rule-based recommendation headline and all scores / place data. */
+/** Merges validated narrative text; keeps the template recommendation headline and all scores / place data. */
 export function mergeNarrativePatch(base: VibeReport, patch: Partial<VibeReport>, narrativeSource: NarrativeAiSource): VibeReport {
   if (!patch.quickVerdict || !patch.recommendation || !patch.bestFor || !patch.avoidIf) {
     console.warn("[VibeGap] Narrative merge: skipped — patch missing quickVerdict, recommendation, bestFor, or avoidIf.");

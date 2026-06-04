@@ -39,7 +39,7 @@ export function buildUnmappedGoalCompareVerdict(
   other: ComparePlaceSide,
   goalDisplay: string,
 ): { whyWinner: string; tradeoff: string; chooseWinnerIf: string; chooseOtherIf: string } {
-  const whyWinner = `A tentative read for ${goalDisplay}: ${winner.place.name} leads on aggregate intent fit from available review signals (rule-based). Rephrase with brunch, study, low wait, budget, or occasion wording to unlock comparison tuning.`;
+  const whyWinner = `A tentative read for ${goalDisplay}: ${winner.place.name} leads on aggregate intent fit from available review signals (based on defined scoring rules). Rephrase with brunch, study, low wait, budget, or occasion wording to unlock comparison tuning.`;
   const tradeoff = `Choose ${other.place.name} if ${stripTrailingPeriod(other.bestFor.toLowerCase())} matters more than ${stripTrailingPeriod(winner.mainRisk.toLowerCase())} for this goal.`;
   const chooseWinnerIf = `Choose ${winner.place.name} if you want the stronger aggregate fit for ${goalDisplay} and can accept: ${stripTrailingPeriod(winner.mainRisk.toLowerCase())}.`;
   const chooseOtherIf = `Choose ${other.place.name} if ${stripTrailingPeriod(other.bestFor.toLowerCase())} outweighs ${stripTrailingPeriod(other.mainRisk.toLowerCase())}.`;
@@ -55,7 +55,7 @@ export function buildGoalCompareInitialVerdict(
   family: CompareTuningFamily,
 ): { whyWinner: string; tradeoff: string; chooseWinnerIf: string; chooseOtherIf: string } {
   const factors = goalFactorPhrase(family);
-  const whyWinner = `Recommended for ${goalDisplay} based on ${factors} (goal-weighted, rule-based scores from available review signals).`;
+  const whyWinner = `Recommended for ${goalDisplay} based on ${factors} (scores use clear rules, are adjusted for your goal, and draw on available review signals).`;
   const tradeoff = `Choose ${other.place.name} if ${stripTrailingPeriod(other.bestFor.toLowerCase())} matters more than ${stripTrailingPeriod(winner.mainRisk.toLowerCase())}.`;
   const chooseWinnerIf = `Choose ${winner.place.name} if you want the safer fit for ${goalDisplay} and can accept: ${stripTrailingPeriod(winner.mainRisk.toLowerCase())}.`;
   const chooseOtherIf = `Choose ${other.place.name} if ${stripTrailingPeriod(other.bestFor.toLowerCase())} outweighs ${stripTrailingPeriod(other.mainRisk.toLowerCase())}.`;
@@ -73,6 +73,6 @@ export function buildGoalComparePostTuneVerdict(
   const base = buildGoalCompareInitialVerdict(winner, other, goalDisplay, family);
   return {
     ...base,
-    whyWinner: `${base.whyWinner} Your tune shifted weights locally between the two venues (still rule-based, same review signals).`,
+    whyWinner: `${base.whyWinner} Your tune shifted weights locally between the two venues (same scoring rules and review signals).`,
   };
 }

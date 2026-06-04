@@ -1,5 +1,5 @@
 /**
- * Shared types for VibeGap — goal fit vs. review-backed venue signals.
+ * Shared types for VibeGap — goal fit vs. venue signals from reviews.
  */
 
 export type PriceLevel = 1 | 2 | 3 | 4;
@@ -196,7 +196,7 @@ export type QueryMode = "goal_search" | "specific_place" | "place_with_intent";
 
 export interface VibeGapScore {
   /**
-   * Signal gap between sample framing and review-backed cues (0 = aligned, 100 = strong mismatch).
+   * Signal gap between sample framing and review themes (0 = aligned, 100 = strong mismatch).
    * Does not measure whether the venue fits the user’s goal — see intentFitScore.
    */
   vibeGapScore: number;
@@ -227,7 +227,7 @@ export interface VibeGapScore {
 /** When a Google Places attempt did not yield live place data (mock fallback or not applicable). */
 export type GooglePlacesFallbackKind = "none" | "no_confident_match" | "lookup_unavailable";
 
-/** How the quick verdict / recommendation copy was produced (scores always rule-based). */
+/** How the quick verdict / recommendation copy was produced (scores use defined rules). */
 export type NarrativeSource = "rules" | "openai" | "gemini";
 
 export interface VibeReport {
@@ -266,7 +266,7 @@ export interface VibeReport {
   avoidIf: string[];
   recommendation: Recommendation;
   generatedAt: string;
-  /** How the quick verdict / recommendation copy was produced (scores always rule-based). */
+  /** How the quick verdict / recommendation copy was produced (scores use defined rules). */
   narrativeSource: NarrativeSource;
   /** True when an LLM successfully supplied polished copy merged into this report. */
   aiNarrativeUsed: boolean;
@@ -336,7 +336,7 @@ export type VibecheckResponse =
   | {
       mode: "compare";
       compare: CompareResult;
-      sourceLabel: "Uses Google Places and available review signals. Rankings are rule-based and goal-weighted.";
+      sourceLabel: "Uses Google Places and available review signals. Rankings are based on clear scoring rules and your visit goal.";
     }
   | {
       mode: "recommendations";
@@ -357,6 +357,6 @@ export type VibecheckResponse =
       detectedIntentLabel: string;
       locationCandidate: null;
       candidates: [];
-      sourceLabel: "Uses Google Places and available review signals. Rankings are rule-based and goal-weighted.";
+      sourceLabel: "Uses Google Places and available review signals. Rankings are based on clear scoring rules and your visit goal.";
       recoveryMessage: string;
     };

@@ -17,7 +17,7 @@ import type {
   VibeReport,
 } from "@/lib/types/vibecheck";
 
-/** Signal gap score: low = goal-cue text and reviews align; high = they diverge. */
+/** Signal gap score: low when the lines on each card and reviews align; high when they diverge. */
 const GAP_LOW_MAX = 32;
 const GAP_MED_MAX = 64;
 
@@ -55,7 +55,7 @@ export function resolveCompareReportIntent(
 function formatPlaceIntentGoalDisplay(goalFragment: string, intent: DetectedIntent): string {
   switch (intent.kind) {
     case "low_wait":
-      return "Low-wait visit";
+      return "Low wait visit";
     case "quiet_calm":
       return "Quiet visit";
     case "study_work":
@@ -90,7 +90,7 @@ function usesGoogleReviewSignals(place: PlaceData): boolean {
 
 /**
  * Builds a full place report. Scoring is split into:
- * - Signal gap: goal-cue text vs. review narrative (never uses “user goal” rules).
+ * - Signal gap: short framing on each card vs. review narrative (never uses “user goal” rules).
  * - Intent Fit: inferred query goal vs. what reviews + framing cues imply about the visit.
  */
 export async function buildMockVibeReport(searchQuery: string): Promise<VibeReport> {
@@ -435,7 +435,7 @@ function collectHits(query: string, keywords: readonly string[]): string[] {
 }
 
 // ---------------------------------------------------------------------------
-// Signal gap: goal-cue text vs. reviews
+// Signal gap: framing on cards vs. reviews
 // ---------------------------------------------------------------------------
 
 type MismatchSignals = {
@@ -449,7 +449,7 @@ type MismatchSignals = {
   expensiveReality: boolean;
   waitReality: boolean;
   highReviewVolume: boolean;
-  /** goal-cue text cards and reviews both describe a busy / loud / wait-heavy room. */
+  /** Visible captions on cards and reviews both describe a busy / loud / wait-heavy room. */
   socialReviewAgreeBusy: boolean;
   vibeGapBullets: string[];
   /** Points driving VibeGap up — excludes “agreement” bullets (score stays low when aligned). */
@@ -457,7 +457,7 @@ type MismatchSignals = {
 };
 
 /**
- * Compares **visible** goal-cue text cards to review text. Uses the same calm vs. lively pack as the UI
+ * Compares **visible** captions on cards to review text. Uses the same calm vs. lively pack as the UI
  * (`getMockSocialContentMode`) so rationale never claims “calm cards” when the lively pack is showing.
  */
 function buildSocialReviewMismatch(
@@ -494,20 +494,20 @@ function buildSocialReviewMismatch(
 
   if (socialReviewAgreeBusy) {
     vibeGapBullets.push(
-      `Evidence: this draw uses the lively goal-cue pack (tags such as ${tagSample}), and reviews echo busy or wait-heavy language (${reviewSample}) — signals align, so the gap score stays low.`,
+      `Evidence: this draw uses the lively cue pack on the cards (tags such as ${tagSample}), and reviews echo busy or wait-heavy language (${reviewSample}) — signals align, so the gap score stays low.`,
     );
   }
 
   if (hiddenGemHype && highReviewVolume) {
     vibeGapBullets.push(
-      `Evidence: goal-cue text still uses discovery-style language (“${snippet(socialBlob, "hidden gem|underrated|secret")}”), while ${place.reviewCount.toLocaleString()} reviews imply the venue is already mainstream.`,
+      `Evidence: the lines on the cards still use discovery-style language (“${snippet(socialBlob, "hidden gem|underrated|secret")}”), while ${place.reviewCount.toLocaleString()} reviews imply the venue is already mainstream.`,
     );
     mismatchPoints += 22;
   }
 
   if (socialCalmPackActive && crowdedReality) {
     vibeGapBullets.push(
-      `Evidence: the calm on-card goal-cue lines show study-, hush-, or no-wait cues (${tagSample}), but review snippets emphasize noise, crowding, or waits (${reviewSample}).`,
+      `Evidence: the calm lines of goal signals on the cards show study-, hush-, or easy-access cues (${tagSample}), but review snippets emphasize noise, crowding, or waits (${reviewSample}).`,
     );
     mismatchPoints += 62;
   }
@@ -521,12 +521,12 @@ function buildSocialReviewMismatch(
 
   if (waitReality && effortlessAccessSocial) {
     vibeGapBullets.push(
-      "Evidence: goal-cue text implies walk-in ease, while reviews still surface lines, pacing, or reservation friction.",
+      "Evidence: the lines on the cards imply walk-in ease, while reviews still surface lines, pacing, or reservation friction.",
     );
     mismatchPoints += 20;
   } else if (waitReality && socialCalmPackActive) {
     vibeGapBullets.push(
-      "Evidence: reviews mention waits or pacing alongside a low-key, “no rush” storyline in the calmer on-card goal cues.",
+      "Evidence: reviews mention waits or pacing alongside a low-key, “no rush” storyline in the calmer goal signals on the cards.",
     );
     mismatchPoints += 12;
   }
@@ -534,8 +534,8 @@ function buildSocialReviewMismatch(
   if (socialBusyPack && !crowdedReality) {
     vibeGapBullets.push(
       usesGoogleReviewSignals(place)
-        ? `Evidence: goal-cue text reads energetic (${tagSample}), while the available Google review signals are comparatively tame on waits and noise — a partial, not total, mismatch.`
-        : `Evidence: goal-cue text reads energetic (${tagSample}), while this review snapshot is comparatively tame on waits and noise — a partial, not total, mismatch.`,
+        ? `Evidence: the lines on the cards read energetic (${tagSample}), while the available Google review signals are comparatively tame on waits and noise — a partial, not total, mismatch.`
+        : `Evidence: the lines on the cards read energetic (${tagSample}), while this review snapshot is comparatively tame on waits and noise — a partial, not total, mismatch.`,
     );
     mismatchPoints += 20;
   }
@@ -546,7 +546,7 @@ function buildSocialReviewMismatch(
     vibeGapBullets.push(
       usesGoogleReviewSignals(place)
         ? "Evidence: visible tags and review themes line up in the available Google review signals — any remaining deltas look situational (timing, seating, or party size)."
-        : "Evidence: on-card goal-cue tags and review themes line up in this snapshot — any remaining deltas look situational (timing, seating, or party size).",
+        : "Evidence: tags on the cards and review themes line up in this snapshot — any remaining deltas look situational (timing, seating, or party size).",
     );
   }
 
@@ -570,7 +570,7 @@ function sampleVisibleVibeTags(posts: SocialPost[]): string {
   const tags = new Set<string>();
   posts.forEach((p) => p.vibeTags.forEach((t) => tags.add(t)));
   const list = [...tags].slice(0, 4);
-  return list.length > 0 ? list.map((t) => `“${t}”`).join(", ") : "the on-card tags";
+  return list.length > 0 ? list.map((t) => `“${t}”`).join(", ") : "the tags on the cards";
 }
 
 function sampleReviewEvidence(place: PlaceData, reviewBlob: string): string {
@@ -628,9 +628,9 @@ function verdictForVibeGap(vibeGapScore: number): string {
     return "On-card goal cues and review themes mostly line up in this snapshot.";
   }
   if (vibeGapScore <= GAP_MED_MAX) {
-    return "Noticeable mismatch between goal-cue text cues and recurring review themes.";
+    return "Noticeable mismatch between the framing on each card and recurring review themes.";
   }
-  return "High mismatch between general venue appeal and review-backed visit fit.";
+  return "High mismatch between general venue appeal and visit fit supported by reviews.";
 }
 
 /** Intent Fit bands for quick verdict copy (V2.3). */
@@ -758,7 +758,7 @@ function frameQuickVerdictExplanation(explanation: string, mode: QueryMode, plac
     framed = `Named venue and goal — ${explanation}`;
   }
   if (place.dataSource === "google" && place.isRealPlaceData) {
-    framed = `${framed} Google confirms the venue details; scoring uses available Google review signals and rule-based weighting.`;
+    framed = `${framed} Google confirms the venue details; scoring uses available Google review signals and clear scoring rules.`;
   }
   return framed;
 }
@@ -812,29 +812,29 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Good for a lively night out — but expect crowds and waits.",
         explanation:
-          "goal-cue text and reviews both describe a high-energy room in this draw — treat lines, volume, and timing as normal parts of the night, not a surprise.",
+          "the lines on the cards and reviews both describe a high-energy room in this draw — treat lines, volume, and timing as normal parts of the night, not a surprise.",
       };
     }
     if (k === "budget_celebration") {
       return {
         title: "Good match — cues and reviews agree.",
         explanation: gRev
-          ? "For a budget-friendly celebration, goal-cue text and review themes line up on value, waits, and crowding in the available Google review signals — still confirm menu math, tax, and tip so the bill matches the occasion."
-          : "For a budget-friendly celebration, goal-cue text and review themes line up on value, waits, and crowding in this snapshot — still confirm menu math, tax, and tip so the bill matches the occasion.",
+          ? "For a budget-friendly celebration, the lines on the cards and review themes line up on value, waits, and crowding in the available Google review signals — still confirm menu math, tax, and tip so the bill matches the occasion."
+          : "For a budget-friendly celebration, the lines on the cards and review themes line up on value, waits, and crowding in this snapshot — still confirm menu math, tax, and tip so the bill matches the occasion.",
       };
     }
     if (k === "study_work" || k === "quiet_calm") {
       return {
         title: "Good match — cues and reviews agree.",
         explanation:
-          "For quiet or focused time, goal-cue text and review signals point the same direction here — pick a calm window and double-check seating, but the big story looks consistent.",
+          "For quiet or focused time, the lines on the cards and review signals point the same direction here — pick a calm window and double-check seating, but the big story looks consistent.",
       };
     }
     return {
-      title: "Good match — goal-cue text and reviews agree.",
+      title: "Good match — the lines on the cards and reviews agree.",
       explanation: gRev
-        ? "For what you searched, goal-cue text and available Google review signals are not fighting each other — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating)."
-        : "For what you searched, goal-cue text and review cues are not fighting each other in this snapshot — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating).",
+        ? "For what you searched, the lines on the cards and available Google review signals are not fighting each other — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating)."
+        : "For what you searched, the lines on the cards and review cues are not fighting each other in this snapshot — use Intent Fit as your green light, then handle the usual logistics (hours, reservations, seating).",
     };
   }
 
@@ -843,27 +843,27 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Good for a lively night out — but expect crowds and waits.",
         explanation:
-          "The vibe still fits a night out, but goal-cue text may gloss over lines, packed dance floors, or pacing friction that reviewers repeat — leave extra time for entry or waits.",
+          "The vibe still fits a night out, but the lines on the cards may gloss over lines, packed dance floors, or pacing friction that reviewers repeat — leave extra time for entry or waits.",
       };
     }
     if (k === "budget_celebration") {
       return {
-        title: "Good for your goal — but on-card cues may gloss over the rough edges.",
+        title: "Good for your goal — but cues on the cards may gloss over the rough edges.",
         explanation:
-          "A celebration on a budget can still work, yet upbeat on-card cues may play down tabs, waits, or a loud room — align on price, timing, and how “special” the night needs to feel before you invite everyone.",
+          "A celebration on a budget can still work, yet upbeat cues on the cards may play down tabs, waits, or a loud room — align on price, timing, and how “special” the night needs to feel before you invite everyone.",
       };
     }
     if (k === "study_work" || k === "quiet_calm") {
       return {
         title: "Possible for your goal — verify the calm story.",
         explanation:
-          "Intent Fit looks decent, but goal-cue text and reviews are not perfectly aligned on noise or crowding — skim recent comments for loud or crowded stretches before you book a long study block.",
+          "Intent Fit looks decent, but the lines on the cards and reviews are not perfectly aligned on noise or crowding — skim recent comments for loud or crowded stretches before you book a long study block.",
       };
     }
     return {
       title: "Good for your goal — but signals conflict.",
       explanation:
-        "The place may still suit what you want, yet goal-cue text and reviews disagree enough that surprises are likely — anchor on review themes for waits, noise, and price.",
+        "The place may still suit what you want, yet the lines on the cards and reviews disagree enough that surprises are likely — anchor on review themes for waits, noise, and price.",
     };
   }
 
@@ -873,12 +873,12 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Skip it for studying.",
         explanation:
-          "goal-cue text and reviews both point to a busy, high-energy place. The issue is not a cue mismatch — it is poor fit for quiet work.",
+          "the lines on the cards and reviews both point to a busy, high-energy place. The issue is not a cue mismatch — it is poor fit for quiet work.",
       };
     }
     if (k === "study_work" || k === "quiet_calm") {
       return {
-        title: "Skip it for your goal — goal-cue text and reviews agree.",
+        title: "Skip it for your goal — the lines on the cards and reviews agree.",
         explanation:
           "Signals line up on noise, turnover, or seating that clashes with focus or calm — the honest read is a miss for what you typed.",
       };
@@ -887,19 +887,19 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Skip it for a party night — signals agree.",
         explanation: gRev
-          ? "goal-cue text and available Google review signals both describe a room that does not deliver the nightlife energy you asked for — pick a different spot rather than hoping it transforms at 10 p.m."
-          : "goal-cue text and reviews both describe a room that does not deliver the nightlife energy you asked for in this snapshot — pick a different spot rather than hoping it transforms at 10 p.m.",
+          ? "the lines on the cards and available Google review signals both describe a room that does not deliver the nightlife energy you asked for — pick a different spot rather than hoping it transforms at 10 p.m."
+          : "the lines on the cards and reviews both describe a room that does not deliver the nightlife energy you asked for in this snapshot — pick a different spot rather than hoping it transforms at 10 p.m.",
       };
     }
     if (k === "budget_celebration") {
       return {
         title: "Skip it for a budget celebration.",
         explanation:
-          "Goal-cue text and reviews both imply price pressure, waits, or crowding that fights a tight, special-occasion plan — agreement here means a clean “no,” not a mystery.",
+          "The lines on the cards and reviews both imply price pressure, waits, or crowding that fights a tight, special-occasion plan — agreement here means a clean “no,” not a mystery.",
       };
     }
     return {
-      title: "Skip it for your goal — goal-cue text and reviews agree.",
+      title: "Skip it for your goal — the lines on the cards and reviews agree.",
       explanation:
         "The signals tell the same story, and that story is a poor match for what you searched — believe the agreement and pick elsewhere.",
     };
@@ -910,13 +910,13 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Risky for a budget celebration.",
         explanation:
-          "goal-cue text reads budget-friendly, but reviews suggest price pressure, waits, or crowding — weak fit for a celebration on a cap.",
+          "the lines on the cards read budget-friendly, but reviews suggest price pressure, waits, or crowding — weak fit for a celebration on a cap.",
       };
     }
     return {
       title: "Risky choice — weak fit for your goal.",
       explanation:
-        "Intent Fit is weak while goal-cue text and review themes disagree — anchor on waits, noise, and price in recent reviews before you commit.",
+        "Intent Fit is weak while the lines on the cards and review themes disagree — anchor on waits, noise, and price in recent reviews before you commit.",
     };
   }
 
@@ -925,20 +925,20 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Uncertain for studying — check recent noise and seating reviews.",
         explanation:
-          "Intent Fit sits in the gray zone while goal-cue text and reviews mostly agree — that often means seat-by-seat luck. Skim very fresh notes on volume, turnover, outlets, and table size before you bank on a long session.",
+          "Intent Fit sits in the gray zone while the lines on the cards and reviews mostly agree — that often means seat-by-seat luck. Skim very fresh notes on volume, turnover, outlets, and table size before you bank on a long session.",
       };
     }
     return {
       title: "Moderate fit — signals mostly agree.",
       explanation:
-        "Intent Fit sits in the middle: not a slam dunk for your goal, but goal-cue text and reviews are not contradicting each other here — a careful visit can still work if you read fresh notes.",
+        "Intent Fit sits in the middle: not a slam dunk for your goal, but the lines on the cards and reviews are not contradicting each other here — a careful visit can still work if you read fresh notes.",
     };
   }
 
   return {
     title: "Uncertain fit — mixed goal match and noisy signals.",
     explanation:
-      "Intent Fit is middling while goal-cue text and reviews pull in different directions — treat this as a yellow light: anchor on recent reviews and keep a backup plan.",
+      "Intent Fit is middling while the lines on the cards and reviews pull in different directions — treat this as a yellow light: anchor on recent reviews and keep a backup plan.",
   };
 }
 
@@ -970,8 +970,8 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
   if (kind === "budget_celebration" || kind === "budget_eats") {
     if (/\b(expensive|overpriced|wait|line|portion)\b/i.test(reviewBlob)) {
       return gRev
-        ? "Google review themes flag price or line pressure, so budget predictability may be weaker than upbeat goal-cue text suggests."
-        : "Review signals in this snapshot flag price or line pressure, so budget predictability may be weaker than upbeat goal-cue text suggests.";
+        ? "Google review themes flag price or line pressure, so budget predictability may be weaker than upbeat the lines on the cards suggests."
+        : "Review signals in this snapshot flag price or line pressure, so budget predictability may be weaker than upbeat the lines on the cards suggests.";
     }
   }
   if (kind === "study_work" || kind === "quiet_calm") {
@@ -984,8 +984,8 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
   if (kind === "low_wait") {
     if (/\b(wait|line|queue|reservation|packed|crowd|busy|slow seating)\b/i.test(reviewBlob)) {
       return gRev
-        ? "Google review signals mention line or reservation friction, which is risky for a no-wait visit."
-        : "Review signals in this snapshot mention line or reservation friction, which is risky for a no-wait visit.";
+        ? "Google review signals mention line or reservation friction, which is risky for a short wait visit."
+        : "Review signals in this snapshot mention line or reservation friction, which is risky for a short wait visit.";
     }
     return gRev
       ? "Available Google review signals suggest a more manageable queue profile off-peak."
@@ -999,29 +999,29 @@ function selectReviewLineForEvidence(place: PlaceData, reviewBlob: string, kind:
 
 function framingSignalLineForEvidence(kind: UserIntentKind, mismatch: MismatchSignals, socialBlob: string): string {
   if (kind === "venue_lookup") {
-    return "Without a parsed visit goal, on-card goal cues are informational only — anchor on Google ratings and recurring review themes.";
+    return "Without a parsed visit goal, goal signals on the cards are informational only — anchor on Google ratings and recurring review themes.";
   }
   if (kind === "low_wait") {
     if (/\b(wait|line|queue|packed|crowd|reservation)\b/i.test(socialBlob)) {
-      return "goal-cue text still shows peak-time crowd cues, so no-wait expectations may be fragile.";
+      return "the lines on the cards still show peak-time crowd cues, so expectations for a short wait may be fragile.";
     }
-    return "goal-cue text implies easier access, but review-side queue signals should drive the decision.";
+    return "the lines on the cards imply easier access, but review-side queue signals should drive the decision.";
   }
   if (kind === "party_nightlife") {
     if (mismatch.socialMode === "lively") {
-      return "goal-cue text skews DJ-forward and high-energy, with packed-room cues in this vignette.";
+      return "the lines on the cards skew DJ-forward and high-energy, with packed-room cues in this vignette.";
     }
-    return "goal-cue text reads softer than peak club hours — still compare with reviews on bass, lines, and fill times.";
+    return "the lines on the cards read softer than peak club hours — still compare with reviews on bass, lines, and fill times.";
   }
   if (kind === "budget_celebration" || kind === "budget_eats") {
     if (/\b(cheap|budget|deal|steal|value)\b/i.test(socialBlob)) {
-      return "goal-cue text pushes easy value and shareable moments — weigh that against recurring review-side price concerns.";
+      return "the lines on the cards push easy value and shareable moments — weigh that against recurring review-side price concerns.";
     }
-    return "goal-cue text still skews appetizing and fun — pair that with a quick scan for wait and value themes in reviews.";
+    return "the lines on the cards still skew appetizing and fun — pair that with a quick scan for wait and value themes in reviews.";
   }
   return mismatch.socialMode === "lively"
-    ? "goal-cue text reads loud, line-prone, and high-energy — not ideal for deep-focus work."
-    : "goal-cue text leans calmer or easier access — compare that storyline with review themes on noise and waits.";
+    ? "the lines on the cards read loud, line-prone, and high-energy — not ideal for deep-focus work."
+    : "the lines on the cards lean calmer or easier access — compare that storyline with review themes on noise and waits.";
 }
 
 function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: PlaceData): string {
@@ -1062,7 +1062,7 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
 
   if (kind === "budget_celebration" || kind === "budget_eats") {
     if (score.priceRealityScore >= 50) {
-      return "Price mismatch risk looks meaningful — upbeat on-card value cues may not match how the check lands in reviews.";
+      return "Price mismatch risk looks meaningful — upbeat value cues on the cards may not match how the check lands in reviews.";
     }
     if (score.waitRiskScore >= 50) {
       return kind === "budget_celebration"
@@ -1080,8 +1080,8 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
 
   if (kind === "family") {
     return score.vibeGapScore > GAP_LOW_MAX
-      ? "Family cues in reviews and goal-cue text are not fully aligned — double-check kid policies, volume, and high-chair availability."
-      : "Goal-cue text and reviews mostly agree on the vibe family-wise — still confirm booster seats or stroller space if you need them.";
+      ? "Family cues in reviews and the lines on the cards are not fully aligned — double-check kid policies, volume, and high-chair availability."
+      : "What the cards show and reviews mostly agree on the vibe family-wise — still confirm booster seats or stroller space if you need them.";
   }
 
   if (kind === "luxury") {
@@ -1099,8 +1099,8 @@ function thirdEvidenceLine(score: VibeGapScore, kind: UserIntentKind, place: Pla
   }
 
   return score.vibeGapScore > GAP_LOW_MAX
-    ? "With no parsed goal, lean on the mismatch between goal-cue text and what reviewers keep repeating."
-    : "Without a parsed goal, goal-cue text and reviews line up enough that there is no big mystery to solve here.";
+    ? "With no parsed goal, lean on the mismatch between the lines on the cards and what reviewers keep repeating."
+    : "Without a parsed goal, the lines on the cards and reviews line up enough that there is no big mystery to solve here.";
 }
 
 function pickReviewEvidenceLine(place: PlaceData, reviewBlob: string): string {
@@ -1133,8 +1133,8 @@ function pickReviewEvidenceLine(place: PlaceData, reviewBlob: string): string {
 type IntentFitResult = { score: number; verdict: string; bullets: string[] };
 
 /**
- * Scores how well the venue matches the user’s inferred goal using reviews + goal-cue text as “what you’ll get”.
- * High score = good fit; low score = your goal is poorly served. Independent of the signal-gap score.
+ * Scores how well the venue matches the user’s inferred goal using reviews + the lines on the cards as “what you’ll get”.
+ * High score = good fit; low score = your goal is poorly served. Independent of the signal gap score.
  */
 function computeIntentFitScore(
   intent: DetectedIntent,
@@ -1162,7 +1162,7 @@ function computeIntentFitScore(
       verdict: "Neutral — we did not parse a specific visit goal from your search.",
       bullets: [
         "Intent Fit stays near the midpoint for venue-style queries (no study, budget, party, or similar keywords).",
-        `The report still weighs goal-cue text against reviews for “${place.name}” — add goal words (e.g. “quiet study”, “cheap eats”) to score intent more sharply.`,
+        `The report still weighs the lines on the cards against reviews for “${place.name}” — add goal words (e.g. “quiet study”, “cheap eats”) to score intent more sharply.`,
       ],
     };
   }
@@ -1185,10 +1185,10 @@ function computeIntentFitScore(
       score: scoreW,
       verdict:
         scoreW < 38
-          ? "Risky for a no-wait visit."
+          ? "Risky for a short wait visit."
           : scoreW < 62
-            ? "Possible for a low-wait visit, but timing risk is visible."
-            : "Reasonable fit for a low-wait visit if you time it well.",
+            ? "Possible for a short wait visit, but timing risk is visible."
+            : "Reasonable fit for a short wait visit if you time it well.",
       bullets: [
         `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 5).join(", ")}).`,
         reviewWaitHeavy
@@ -1215,12 +1215,12 @@ function computeIntentFitScore(
         bullets: agree
           ? [
               `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ") || "query cues"}).`,
-              `The livelier on-card goal cues and review snippets both skew energetic or wait-heavy — weak match for your goal. Laptop-friendly score (${laptopFriendlyScore}/100) backs that read.`,
-              "The signal-gap score stays low when goal-cue text and reviews agree; Intent Fit is the main red flag for study-style plans.",
+              `The livelier goal signals on the cards and review snippets both skew energetic or wait-heavy — weak match for your goal. Laptop-friendly score (${laptopFriendlyScore}/100) backs that read.`,
+              "The signal gap score stays low when the lines on the cards and reviews agree; Intent Fit is the main red flag for study-style plans.",
             ]
           : [
               `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ") || "query cues"}).`,
-              "Reviews emphasize noise, crowding, waits, or turnover — a rough match for quiet work even when goal-cue text looks softer.",
+              "Reviews emphasize noise, crowding, waits, or turnover — a rough match for quiet work even when the lines on the cards looks softer.",
             ],
       };
     }
@@ -1230,7 +1230,7 @@ function computeIntentFitScore(
         verdict: "Strong fit for a calmer or work-friendly visit based on available cues.",
         bullets: [
           `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ")}).`,
-          "Review excerpts and goal-cue text both lean quieter or more controlled — aligned with your stated goal.",
+          "Review excerpts and the lines on the cards both lean quieter or more controlled — aligned with your stated goal.",
         ],
       };
     }
@@ -1250,7 +1250,7 @@ function computeIntentFitScore(
             ? "Available Google review themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work."
             : "Review themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work.",
         gRev
-          ? "If you need silence, favor off-peak windows and seats away from the service path — goal-cue text is not a live crowd forecast."
+          ? "If you need silence, favor off-peak windows and seats away from the service path — the lines on the cards is not a live crowd forecast."
           : "If you need silence, favor off-peak windows and seats away from the service path when reviews look mixed.",
       ],
     };
@@ -1283,10 +1283,10 @@ function computeIntentFitScore(
           `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.join(", ")}).`,
           strong
             ? "Review signals skew loud, crowd-forward, and weekend-heavy — that usually supports a party night; lines and packed rooms read as normal friction, not a goal misfit."
-            : "The on-card goal cues read upbeat but not a guaranteed club night — skim for DJ calendars vs. slow nights before you dress up.",
+            : "The goal signals on the cards read upbeat but not a guaranteed club night — skim for DJ calendars vs. slow nights before you dress up.",
           nightlifeRoom
-            ? "The livelier on-card goal cues line up with high-tempo expectations — still pick an arrival window that tolerates a wait."
-            : "Goal-cue tone is mixed — pair it with review notes on crowd, music, and pacing.",
+            ? "The livelier goal signals on the cards line up with high-tempo expectations — still pick an arrival window that tolerates a wait."
+            : "Tone on the cards is mixed — pair it with review notes on crowd, music, and pacing.",
         ],
       };
     }
@@ -1316,7 +1316,7 @@ function computeIntentFitScore(
         chaotic
           ? "Reviews skew loud or busy without strong ‘intimate table’ language — a risky pick for a quiet anniversary unless you book off-peak."
           : gRev
-            ? "Goal-cue text and reviews leave room for a polished table experience — still confirm reservations and seating in fresh Google reviews."
+            ? "The lines on the cards and reviews leave room for a polished table experience — still confirm reservations and seating in fresh Google reviews."
             : "Goal cues and reviews leave room for a polished table experience — still confirm reservations and seating from current listings.",
       ],
     };
@@ -1396,7 +1396,7 @@ function computeIntentFitScore(
       bullets: [
         `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.join(", ")}).`,
         hostile
-          ? "Language in reviews or goal-cue text leans adult-night-out — double-check kid policies before booking."
+          ? "Language in reviews or the lines on the cards lean adult-night-out — double-check kid policies before booking."
           : "No strong ‘adults-only’ red flags in the available text snapshot — still verify high chairs and noise with the venue.",
       ],
     };
@@ -1563,12 +1563,12 @@ function buildRealitySummary(place: PlaceData): string {
 function summarizeSocialHype(posts: SocialPost[], mode: "calm" | "lively"): string {
   const tags = new Set<string>();
   posts.forEach((p) => p.vibeTags.forEach((t) => tags.add(t)));
-  const tagLine = [...tags].slice(0, 6).join(", ") || "short on-card goal cues";
+  const tagLine = [...tags].slice(0, 6).join(", ") || "short goal signals on the cards";
   const pack =
     mode === "lively"
-      ? "livelier on-card goal cues (energy, crowds, or late-night phrasing)"
-      : "calmer on-card goal cues (quiet table, study, or easier-access phrasing)";
-  return `VibeGap uses ${pack} as deterministic goal-cue text alongside Google review themes where available. Theme tags include: ${tagLine}. The signal-gap score contrasts those cues with review text; Intent Fit weighs both against the goal parsed from your search.`;
+      ? "livelier goal signals on the cards (energy, crowds, or late-night phrasing)"
+      : "calmer goal signals on the cards (quiet table, study, or easier-access phrasing)";
+  return `VibeGap uses ${pack} as deterministic framing on each card alongside Google review themes where available. Theme tags include: ${tagLine}. The signal gap score contrasts those cues with review text; Intent Fit weighs both against the goal parsed from your search.`;
 }
 
 function deriveTags(
@@ -1652,7 +1652,7 @@ function deriveTags(
     if (score.waitRiskScore < 52) bestFor.push("Low-stress nights when you are not racing to a show after");
     const avoidIf: string[] = ["Surprise walk-ins on loud, packed nights without a reservation backup"];
     if (score.waitRiskScore >= 55) avoidIf.push("Tight timelines where a line would ruin the evening flow");
-    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting polished on-card cues alone when reviews mention noise or crowding");
+    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting polished cues on the cards alone when reviews mention noise or crowding");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
   }
 
@@ -1674,7 +1674,7 @@ function deriveTags(
     if (place.priceLevel <= 2) bestFor.push("Casual plans where the check has to stay sensible");
     const avoidIf: string[] = ["Strict budgets when reviews flag price surprises or small portions"];
     if (score.priceRealityScore >= 50) {
-      avoidIf.push("Expecting upbeat “cheap” on-card cues to match the final bill every time");
+      avoidIf.push("Expecting upbeat “cheap” cues on the cards to match the final bill every time");
     }
     if (score.waitRiskScore >= 58) avoidIf.push("Rushed meals with no buffer if the kitchen or line backs up");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
@@ -1686,7 +1686,7 @@ function deriveTags(
     bestFor.push("Hosts who confirm tasting menus, dietary needs, and cancellation rules up front");
     const avoidIf: string[] = ["Last-minute bookings when reviews mention tight tables or long waits"];
     avoidIf.push("Budget caps that cannot flex if the experience runs long");
-    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting polished goal-cue text alone when reviews question value or consistency");
+    if (score.vibeGapScore > GAP_LOW_MAX) avoidIf.push("Trusting polished lines on the cards alone when reviews question value or consistency");
     return { bestFor: bestFor.slice(0, 3), avoidIf: avoidIf.slice(0, 3) };
   }
 
@@ -1703,7 +1703,7 @@ function deriveTags(
   if (score.waitRiskScore >= 60) avoidIf.push("Tight itineraries with no buffer for lines or pacing");
   if (score.touristDensityScore >= 60) avoidIf.push("Peak travel windows if you dislike dense crowds");
   if (score.priceRealityScore >= 55) {
-    avoidIf.push("Expecting menu prices to match upbeat on-card goal cues when mismatch risk is high");
+    avoidIf.push("Expecting menu prices to match upbeat goal signals on the cards when mismatch risk is high");
   }
   if (score.laptopFriendlyScore < 40) avoidIf.push("Deep-focus remote work during dinner rush");
   if (score.intentFitScore < 35 && score.vibeGapScore <= GAP_MED_MAX) {
@@ -1711,7 +1711,7 @@ function deriveTags(
     if (!avoidIf.includes(msg)) avoidIf.push(msg);
   }
   if (avoidIf.length === 0) {
-    avoidIf.push("Assuming one on-card cue line represents every hour of service");
+    avoidIf.push("Assuming one cue line on the cards represents every hour of service");
   }
 
   return { bestFor, avoidIf };
@@ -1745,18 +1745,18 @@ function buildRecommendation(
   let body: string;
   if (isStudyLike && lowIntent && lowVibeGap) {
     body = usesGoogleReviewSignals(place)
-      ? `${ratingLine} goal-cue text and available Google review signals mostly agree this place is energetic and busy, so the signal-gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh Google reviews alongside this read.`
-      : `${ratingLine} Goal-cue text and reviews mostly agree this place is energetic and busy, so the signal-gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh reviews alongside this read.`;
+      ? `${ratingLine} The lines on the cards and available Google review signals mostly agree this place is energetic and busy, so the signal gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh Google reviews alongside this read.`
+      : `${ratingLine} The lines on the cards and reviews mostly agree this place is energetic and busy, so the signal gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh reviews alongside this read.`;
   } else {
-    const planLine = `Practical fit: ${bestFor[0] ?? "a quick reconnaissance visit"}. Watch out if ${avoidIf[0]?.toLowerCase() ?? "goal-cue text oversimplifies the room"}.`;
+    const planLine = `Practical fit: ${bestFor[0] ?? "a quick reconnaissance visit"}. Watch out if ${avoidIf[0]?.toLowerCase() ?? "the lines on the cards oversimplify the room"}.`;
     body =
       vibeGapScore <= GAP_LOW_MAX
         ? usesGoogleReviewSignals(place)
-          ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because on-card goal cues and review themes line up in the available Google review signals.`
-          : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because on-card goal cues and review themes line up in this snapshot.`
+          ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because goal signals on the cards and review themes line up in the available Google review signals.`
+          : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because goal signals on the cards and review themes line up in this snapshot.`
         : vibeGapScore <= GAP_MED_MAX
-        ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is elevated where on-card goal cues drift from recurring review themes.`
-        : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is high — anchor expectations on review themes, not the most aspirational on-card goal cues.`;
+        ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is elevated where goal signals on the cards drift from recurring review themes.`
+        : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is high — anchor expectations on review themes, not the most aspirational goal signals on the cards.`;
 
     if (detectedIntent.kind !== "venue_lookup") {
       const intentLabel =

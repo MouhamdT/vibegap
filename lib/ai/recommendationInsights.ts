@@ -172,7 +172,7 @@ export function buildRecommendationInsights(
   const skip = candidates.filter((c) => c.decision.label === "SKIP").length;
 
   const strongestRisk =
-    top?.mainRisk ?? "Signal depth across candidates is thinner than ideal for a high-confidence pick.";
+    top?.mainRisk ?? "Signal depth across candidates is thinner than ideal for a pick with strong confidence.";
 
   const weakGate = candidates.some((c) => c.intentQualityTier === "weak" || c.intentQualityTier === "poor");
   const confidenceNote = weakGate

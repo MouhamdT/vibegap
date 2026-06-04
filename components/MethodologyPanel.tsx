@@ -14,7 +14,7 @@ const STEPS: readonly { title: string; body: string }[] = [
     body: "Surfaces repeated review themes: wait time, noise, crowding, value, food quality, ambience, seating, and reservation friction.",
   },
   {
-    title: "Goal-weighted scoring",
+    title: "Scoring adjusted to your goal",
     body: "Applies a goal-specific decision framework — not stars alone. Weights shift by goal (e.g. study favors calm signals; celebrations favor group fit and reservation risk).",
   },
   {
@@ -27,7 +27,7 @@ const GOAL_WEIGHTS: readonly { goal: string; bullets: readonly string[] }[] = [
   { goal: "Quiet study", bullets: ["Noise / crowding risk", "Seating & laptop fit", "Review strength"] },
   { goal: "Budget dinner", bullets: ["Price / value fit", "Group practicality", "Wait / reservation risk"] },
   { goal: "Special occasion", bullets: ["Ambience / reputation", "Review strength", "Reservation pressure"] },
-  { goal: "Low-wait", bullets: ["Line / wait mentions", "Reservation friction", "Timing flexibility"] },
+  { goal: "Short wait", bullets: ["Line / wait mentions", "Reservation friction", "Timing flexibility"] },
 ] as const;
 
 function MethodologyInner({ className = "" }: { className?: string }) {
@@ -65,8 +65,8 @@ function MethodologyInner({ className = "" }: { className?: string }) {
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Recommendation style</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
-          Reliable, Balanced, and Discovery modes adjust how much the ranking favors established review coverage versus less
-          obvious but goal-matching options. This is a local re-rank on the same candidates — it does not fetch new data.
+          Reliable, Balanced, and Discovery modes adjust how much the ranking favors established review coverage versus newer
+          or less obvious options that still fit the goal. This updates the same candidate list locally and does not fetch new data.
         </p>
       </div>
 
@@ -74,8 +74,7 @@ function MethodologyInner({ className = "" }: { className?: string }) {
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Tune ranking</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
           After search, use <span className="font-medium text-stone-800">Tune ranking</span> to nudge quiet, wait, value, and
-          confidence weights. Rankings update locally using the same venue and review signals; changing sliders does not
-          fetch new data.
+          confidence weights. Changing sliders updates the current results locally. It does not fetch new data.
         </p>
       </div>
 
@@ -83,10 +82,10 @@ function MethodologyInner({ className = "" }: { className?: string }) {
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">In your report</p>
         <ul className="mt-2 space-y-1 text-[11px] leading-relaxed text-stone-600">
           <li>
-            <span className="font-medium text-stone-800">Intent Fit</span> — goal match from review-derived signals.
+            <span className="font-medium text-stone-800">Intent Fit</span> — how well the venue matches the goal using available review signals.
           </li>
           <li>
-            <span className="font-medium text-stone-800">Signal gap</span> — mismatch between on-card goal cues and review-backed themes.
+            <span className="font-medium text-stone-800">Signal gap</span> — mismatch between the visit goal and available review themes.
           </li>
           <li>
             <span className="font-medium text-stone-800">Confidence</span> — strength of available Google review signals.

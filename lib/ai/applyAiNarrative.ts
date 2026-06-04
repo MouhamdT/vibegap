@@ -26,7 +26,7 @@ function patchIsComplete(patch: Partial<VibeReport> | null): patch is Partial<Vi
 }
 
 /**
- * Applies optional LLM narrative polish per `AI_PROVIDER`. Scores and place data stay rule-based.
+ * Applies optional LLM narrative polish per `AI_PROVIDER`. Scores and place data stay on the defined rule templates.
  */
 export async function applyAiNarrativeToReport(report: VibeReport): Promise<VibeReport> {
   const provider = normalizeAiProvider();

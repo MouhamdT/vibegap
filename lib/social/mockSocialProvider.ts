@@ -17,8 +17,8 @@ const SOURCES: SocialSource[] = ["tiktok", "instagram", "youtube", "tiktok", "in
 export type MockSocialContentMode = "calm" | "lively";
 
 /**
- * Which deterministic goal-cue tone is used — must stay in sync with `getMockSocialForPlace`
- * so scoring can reference the same on-card text logic as the UI.
+ * Which deterministic framing tone is used — must stay in sync with `getMockSocialForPlace`
+ * so scoring can reference the same card text logic as the UI.
  */
 export function getMockSocialContentMode(place: PlaceData): MockSocialContentMode {
   const baseSeed = djb2(`${place.id}|${place.name}|${place.category}`);
@@ -32,7 +32,7 @@ export function getMockSocialContentMode(place: PlaceData): MockSocialContentMod
 }
 
 /**
- * Deterministic on-card goal-cue lines for scoring (not live feeds or social platforms).
+ * Deterministic lines on each card for scoring (not live feeds or social platforms).
  */
 export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
   const seed = djb2(`${place.id}|${place.name}|${place.category}|${place.mockGoalIntentKind ?? ""}`);
@@ -42,18 +42,18 @@ export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
 
   const calmCaptions = [
     `${short} reads as a calmer table experience with softer noise and easier pacing in this cue set.`,
-    `Goal-cue text for this ${place.category.toLowerCase()} leans study-friendly: quieter room, lighter crowds, and patient service.`,
-    `Date-night style cues here: softer lighting, hushed tables, and a slower service rhythm in the on-card lines.`,
+    `The framing for this ${place.category.toLowerCase()} leans study-friendly: quieter room, lighter crowds, and patient service.`,
+    `Date-night style cues here: softer lighting, hushed tables, and a slower service rhythm in the lines on each card.`,
     `Value-forward goal cues: generous portions, modest tabs, and a relaxed “no rush” checkout in this set.`,
-    `Work-friendly phrasing on-card: outlets mentioned, low chatter, and seating that tolerates a laptop block.`,
+    `Work-friendly phrasing on each card: outlets mentioned, low chatter, and seating that tolerates a laptop block.`,
     `Brunch-style goal cues: lighter waits in text, patio-forward language, and a sunny-room storyline.`,
   ];
 
   const livelyCaptions = [
     `${short} reads as a higher-energy room in this cue set — weekend-forward, louder tables, and a social floor.`,
-    `Goal-cue text leans crowd-forward: packed peak hours, music-forward language, and a busier service path.`,
+    `The lines on each card lean crowd-forward: packed peak hours, music-forward language, and a busier service path.`,
     `Wait- and line-aware phrasing appears in these cues alongside “worth it” energy — plan extra arrival time.`,
-    `Night-out style cues: louder volume, tighter tables, and a scene-first storyline in the on-card lines.`,
+    `Night-out style cues: louder volume, tighter tables, and a scene-first storyline in the lines on each card.`,
     `Brunch-forward cues emphasize buzz, patio density, and a busier room than a quiet weekday slot.`,
     `Goal cues highlight a popular room: turnover, reservations, and peak-hour volume show up in the text.`,
   ];

@@ -279,7 +279,7 @@ function buildDecisionAwareReason(
         ? `Noise or crowding risk lowered its rank versus quieter peers in this list.`
         : `Possible study fit, but seating and outlet reliability look less certain than higher-ranked picks.`;
     }
-    return `Review signals conflict with a low-noise, low-wait study plan — skip unless you can flex the goal.`;
+    return `Review signals conflict with a quiet study plan and short wait expectations — skip unless you can flex the goal.`;
   }
 
   if (intentKind === "budget_eats" || intentKind === "budget_celebration") {
@@ -341,12 +341,12 @@ function buildDecisionAwareReason(
     const mealish = /\b(brunch|lunch|dinner|coffee|meal|café|cafe)\b/i.test(intent.label);
     if (mealish) {
       if (label === "GO") {
-        return `Good meal-context signal from ratings and review breadth; tourist-area crowding may still affect timing — rankings stay rule-based on the same signals.`;
+        return `Good meal-context signal from ratings and review breadth; tourist-area crowding may still affect timing — rankings stay on the same signals with clear rules.`;
       }
       if (label === "MAYBE") {
         return v % 2 === 0
           ? `Meal fit is plausible, but crowd timing or value looks less certain than higher-ranked picks.`
-          : `Check seating predictability in fresh reviews; on-card cues should not replace reading the room yourself.`;
+          : `Check seating predictability in fresh reviews; cues on the cards should not replace reading the room yourself.`;
       }
       return `Weak meal-context fit versus review themes for this shortlist.`;
     }
@@ -505,7 +505,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+        explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
       },
     ];
   }
@@ -531,7 +531,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+        explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
       },
     ];
   }
@@ -557,7 +557,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+        explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
       },
     ];
   }
@@ -578,7 +578,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+        explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
       },
     ];
   }
@@ -599,7 +599,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+        explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
       },
     ];
   }
@@ -610,7 +610,7 @@ function scoreBreakdownFor(
         label: "Low-wait fit",
         score: clamp(72 - (analysis.signals.waitHeavy ? 34 : 0), 0, 100),
         explanation: analysis.signals.waitHeavy
-          ? "Repeated wait, line, or reservation themes reduce low-wait confidence."
+          ? "Repeated wait, line, or reservation themes reduce confidence for a short wait visit."
           : "Fewer hard queue warnings in the current review snapshot.",
       },
       {
@@ -622,7 +622,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+        explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
       },
     ];
   }
@@ -634,7 +634,7 @@ function scoreBreakdownFor(
     {
       label: "Signal confidence",
       score: confidenceScore,
-      explanation: "Higher when Google review signals are available; rankings are rule-based and goal-weighted.",
+      explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
     },
   ];
 }

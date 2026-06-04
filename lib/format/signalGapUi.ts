@@ -13,7 +13,7 @@ export function signalGapScoreCaption(queryMode: QueryMode, intentKind?: UserInt
   if (queryMode === "place_with_intent") {
     return "How strongly review/venue signals conflict with the stated visit goal.";
   }
-  return "No specific goal detected; this compares short on-card cues with review-backed themes.";
+  return "No specific goal detected; this compares short cues on the cards with themes from reviews.";
 }
 
 export function signalGapRationaleHeading(queryMode: QueryMode): string {

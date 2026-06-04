@@ -697,7 +697,7 @@ function tryTrailingPlaceWithIntent(raw: string): QueryClassification | null {
         placeNameCandidate: left,
         intentGoalText: right.trim(),
         queryExplanation:
-          "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; the signal-gap read contrasts on-card goal cues with Google review signals for the matched place.",
+          "We read a named venue plus a trailing visit goal (not only “for …”). Intent Fit scores that goal; the signal gap read contrasts goal signals on the cards with Google review signals for the matched place.",
         queryContextBanner: "Checking this venue against your goal.",
         locationCandidate: null,
         recommendationMode: false,
@@ -726,7 +726,7 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
         placeNameCandidate: before,
         intentGoalText: after,
         queryExplanation:
-          "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; the signal-gap read contrasts on-card goal cues with Google review data for that named pick.",
+          "You named a venue and a visit goal after “for …”. Intent Fit scores the goal; the signal gap read contrasts goal signals on the cards with Google review data for that named pick.",
         queryContextBanner: "Checking this venue against your goal.",
         locationCandidate: null,
         recommendationMode: false,
@@ -749,8 +749,8 @@ export function classifyQueryMode(searchQuery: string, intent: DetectedIntent): 
       queryMode: "goal_search",
       placeNameCandidate: null,
       intentGoalText: null,
-      queryExplanation:
-        "We read this as a goal-style search. Intent Fit is the lead signal; the signal-gap score adds how on-card goal cues and Google reviews line up for the venue.",
+        queryExplanation:
+          "We read this as a goal-style search. Intent Fit is the lead signal; the signal gap score adds how goal signals on the cards and Google reviews line up for the venue.",
       queryContextBanner: hasLoc ? "Finding places that match your plan." : "Finding places that match your goal.",
       locationCandidate,
       recommendationMode: hasLoc,

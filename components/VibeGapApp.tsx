@@ -281,7 +281,7 @@ export function VibeGapApp() {
               Find the right place for the plan.
             </h1>
             <p className="text-pretty text-base leading-relaxed text-stone-600 sm:text-lg">
-              Rank places by goal fit, review-backed risk, and confidence — not stars alone.
+              Rank places by goal fit, review signals, and confidence — not stars alone.
             </p>
           </header>
 
@@ -316,7 +316,7 @@ export function VibeGapApp() {
               </p>
             ) : null}
             <p className="max-w-lg px-3 text-center text-[12px] leading-relaxed text-stone-500">
-              Turns a travel plan into a ranked shortlist using venue data, review themes, and goal-weighted scoring.
+              Turns a travel plan into a ranked shortlist using venue data, review themes, and scoring adjusted for your goal.
             </p>
             <MethodologyLandingPreview />
           </div>
@@ -327,7 +327,7 @@ export function VibeGapApp() {
             <div className="min-w-0 max-w-md shrink-0 space-y-0.5">
               <h1 className="text-base font-semibold tracking-tight text-stone-950 sm:text-lg">Find the right place for the plan.</h1>
               <p className="text-[11px] leading-relaxed text-stone-500 sm:text-xs">
-                Rank places by goal fit, review-backed risk, and confidence — not stars alone.
+                Rank places by goal fit, review signals, and confidence — not stars alone.
               </p>
             </div>
             <div className="min-w-0 w-full flex-1 lg:flex lg:justify-end">
