@@ -6,8 +6,9 @@ import {
   TUNABLE_SLIDER_HINTS,
   TUNABLE_SLIDER_LABELS,
   type PriorityWeights,
+  type TunablePriorityKey,
 } from "@/lib/ai/priorityTuning";
-import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
+import { PRODUCT_HONESTY_COMPARE, PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 
 function mergeAtmosphere(next: PriorityWeights, defaultWeights: PriorityWeights): PriorityWeights {
   return { ...next, atmosphere: defaultWeights.atmosphere };
@@ -23,6 +24,13 @@ type PriorityTuningPanelProps = {
   winnerUpdatedNote?: string | null;
   /** Small hint under the button (e.g. Detected vs Custom priorities). */
   prioritiesSubLabel?: string;
+  variant?: "recommendation" | "compare";
+  /** Overrides trigger + dialog title when set (e.g. “Tune comparison”). */
+  tuneActionLabel?: string;
+  /** First line inside the popover (ranking vs comparison wording). */
+  panelIntroLine?: string;
+  sliderLabels?: Partial<Record<TunablePriorityKey, string>>;
+  sliderHints?: Partial<Record<TunablePriorityKey, string>>;
 };
 
 export function PriorityTuningPanel({
@@ -33,10 +41,24 @@ export function PriorityTuningPanel({
   rankingNote,
   winnerUpdatedNote,
   prioritiesSubLabel,
+  variant = "recommendation",
+  tuneActionLabel,
+  panelIntroLine,
+  sliderLabels,
+  sliderHints,
 }: PriorityTuningPanelProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const rootRef = useRef<HTMLDivElement | null>(null);
+
+  const actionLabel =
+    tuneActionLabel ?? (variant === "compare" ? "Tune comparison" : "Tune ranking");
+  const dialogTitle = actionLabel;
+  const defaultIntro =
+    variant === "compare"
+      ? "Comparison updates locally."
+      : "Rankings update locally.";
+  const introLine = panelIntroLine ?? defaultIntro;
 
   useEffect(() => {
     if (!open) return;
@@ -49,9 +71,12 @@ export function PriorityTuningPanel({
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [open]);
 
-  const handleSliderChange = (key: (typeof TUNABLE_PRIORITY_KEYS)[number], value: number) => {
+  const handleSliderChange = (key: TunablePriorityKey, value: number) => {
     onWeightsChange(mergeAtmosphere({ ...weights, [key]: value }, defaultWeights));
   };
+
+  const labelFor = (key: TunablePriorityKey) => sliderLabels?.[key] ?? TUNABLE_SLIDER_LABELS[key];
+  const hintFor = (key: TunablePriorityKey) => sliderHints?.[key] ?? TUNABLE_SLIDER_HINTS[key];
 
   return (
     <div ref={rootRef} className="flex w-full min-w-0 flex-col gap-0.5 self-start sm:items-end lg:ml-auto">
@@ -63,7 +88,7 @@ export function PriorityTuningPanel({
           onClick={() => setOpen((v) => !v)}
           className="inline-flex w-fit max-w-full shrink-0 items-center gap-1 rounded-md border border-stone-200/70 bg-white px-2.5 py-1.5 text-[11px] font-medium text-stone-800 shadow-sm transition hover:border-stone-300 hover:bg-stone-50/90"
         >
-          <span className="whitespace-nowrap">Tune ranking</span>
+          <span className="whitespace-nowrap">{actionLabel}</span>
           <span className="text-stone-400" aria-hidden>
             {open ? "▴" : "▾"}
           </span>
@@ -78,10 +103,10 @@ export function PriorityTuningPanel({
             id={panelId}
             className="mt-2 w-full max-w-none rounded-lg border border-stone-200/70 bg-white p-3 shadow-md sm:max-w-none lg:absolute lg:right-0 lg:top-[calc(100%+8px)] lg:z-[80] lg:mt-0 lg:w-[clamp(320px,28vw,380px)] lg:min-w-[320px] lg:max-w-[380px] lg:p-3 lg:shadow-lg"
             role="dialog"
-            aria-label="Tune ranking"
+            aria-label={dialogTitle}
           >
             <div className="flex items-start justify-between gap-3 border-b border-stone-100 pb-2">
-              <p className="text-sm font-semibold tracking-tight text-stone-950 whitespace-nowrap">Tune ranking</p>
+              <p className="text-sm font-semibold tracking-tight text-stone-950 whitespace-nowrap">{dialogTitle}</p>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -92,7 +117,8 @@ export function PriorityTuningPanel({
             </div>
 
             <p className="mt-2 text-[10px] leading-relaxed text-stone-500">
-              Rankings update locally. {PRODUCT_HONESTY_FULL}
+              {introLine}{" "}
+              {variant === "compare" ? PRODUCT_HONESTY_COMPARE : PRODUCT_HONESTY_FULL}
             </p>
 
             <div className="mt-2.5 space-y-2">
@@ -102,9 +128,9 @@ export function PriorityTuningPanel({
                     <label
                       htmlFor={`${panelId}-${key}`}
                       className="min-w-0 font-medium"
-                      title={TUNABLE_SLIDER_HINTS[key]}
+                      title={hintFor(key)}
                     >
-                      {TUNABLE_SLIDER_LABELS[key]}
+                      {labelFor(key)}
                     </label>
                     <span className="shrink-0 tabular-nums text-stone-500">{weights[key]}</span>
                   </div>
@@ -117,7 +143,7 @@ export function PriorityTuningPanel({
                     value={weights[key]}
                     onChange={(e) => handleSliderChange(key, Number(e.target.value))}
                     className="vibegap-tune-range h-1.5 w-full min-w-0 cursor-pointer accent-stone-700"
-                    title={TUNABLE_SLIDER_HINTS[key]}
+                    title={hintFor(key)}
                   />
                 </div>
               ))}

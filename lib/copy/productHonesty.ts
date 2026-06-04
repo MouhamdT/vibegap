@@ -1,3 +1,7 @@
+/** Single-line honesty when tuning a two-venue comparison (not a ranked list). */
+export const PRODUCT_HONESTY_COMPARE =
+  "Uses Google Places and available review signals. The comparison is rule-based and goal-weighted.";
+
 /** Single-line product honesty for footers, API `sourceLabel`, and recommendation subtext. */
 export const PRODUCT_HONESTY_FULL =
   "Uses Google Places and available review signals. Rankings are rule-based and goal-weighted.";

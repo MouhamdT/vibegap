@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { PriorityTuningPanel } from "@/components/PriorityTuningPanel";
 import {
   applyPriorityWeightsToCompare,
+  getCompareTuningSliderCopy,
   getDefaultPriorityWeights,
   weightsEqual,
   type PriorityWeights,
@@ -137,7 +138,14 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
   const [weights, setWeights] = useState<PriorityWeights>(defaultWeights);
   const [userAdjusted, setUserAdjusted] = useState(false);
 
+  const compareSliderCopy = useMemo(
+    () =>
+      compare.compareTuningFamily ? getCompareTuningSliderCopy(compare.compareTuningFamily) : null,
+    [compare.compareTuningFamily],
+  );
+
   const displayCompare = useMemo(() => {
+    if (!compare.compareAllowsPriorityTuning) return compare;
     if (weightsEqual(weights, defaultWeights)) return compare;
     return applyPriorityWeightsToCompare(compare, weights);
   }, [compare, weights, defaultWeights]);
@@ -155,8 +163,10 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
   };
 
   const winnerUpdatedNote =
-    userAdjusted && displayCompare.winnerPlaceId !== baselineWinnerId
-      ? "Winner updated based on your priorities."
+    compare.compareAllowsPriorityTuning &&
+    userAdjusted &&
+    displayCompare.winnerPlaceId !== baselineWinnerId
+      ? "Recommended winner updated based on your tune."
       : null;
 
   const winnerName =
@@ -218,6 +228,11 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
             <p className="block w-full max-w-full text-[12px] leading-relaxed text-stone-600 break-normal">
               {compare.compareHeadlineSubtitle}
             </p>
+            {!compare.compareAllowsPriorityTuning ? (
+              <p className="block w-full max-w-full text-[11px] leading-relaxed text-stone-500">
+                {"Add a goal like 'for brunch' or 'for studying' for a stronger comparison."}
+              </p>
+            ) : null}
             {compare.partialResolveMessage ? (
               <p className="text-[11px] font-medium text-amber-900/90">{compare.partialResolveMessage}</p>
             ) : null}
@@ -235,15 +250,20 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
             ) : null}
           </div>
           <div className="w-full shrink-0 lg:w-auto lg:max-w-[min(380px,100%)] lg:justify-self-end">
-            <PriorityTuningPanel
-              weights={weights}
-              defaultWeights={defaultWeights}
-              onWeightsChange={handleWeightsChange}
-              onReset={handleReset}
-              rankingNote={userAdjusted ? "Ranking updated locally." : null}
-              winnerUpdatedNote={winnerUpdatedNote}
-              prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
-            />
+            {compare.compareAllowsPriorityTuning && compareSliderCopy ? (
+              <PriorityTuningPanel
+                variant="compare"
+                weights={weights}
+                defaultWeights={defaultWeights}
+                onWeightsChange={handleWeightsChange}
+                onReset={handleReset}
+                rankingNote={userAdjusted ? "Comparison updated locally." : null}
+                winnerUpdatedNote={winnerUpdatedNote}
+                prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
+                sliderLabels={compareSliderCopy.labels}
+                sliderHints={compareSliderCopy.hints}
+              />
+            ) : null}
           </div>
         </div>
       </header>

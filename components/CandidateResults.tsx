@@ -171,6 +171,7 @@ function CandidateResultsBody({
           {rankedCandidates.length > 0 ? (
             <div className="w-full shrink-0 lg:w-auto lg:max-w-[min(380px,100%)] lg:justify-self-end">
               <PriorityTuningPanel
+                variant="recommendation"
                 weights={weights}
                 defaultWeights={defaultWeights}
                 onWeightsChange={handleWeightsChange}

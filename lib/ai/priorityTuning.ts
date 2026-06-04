@@ -2,12 +2,15 @@ import type {
   CompareFactorRow,
   ComparePlaceSide,
   CompareResult,
+  CompareTuningFamily,
   DecisionConfidence,
   DecisionLabel,
   DetectedIntent,
   PlaceData,
   RankedCandidate,
 } from "@/lib/types/vibecheck";
+
+import { buildGoalComparePostTuneVerdict } from "@/lib/ai/compareVerdictCopy";
 
 export const PRIORITY_KEYS = [
   "quietCrowd",
@@ -48,6 +51,143 @@ export const TUNABLE_SLIDER_HINTS: Record<TunablePriorityKey, string> = {
   budgetValue: "Budget / price fit",
   reviewConfidence: "Stronger review signal depth",
 };
+
+function resolveCompareTuningFamilyFromIntentKind(intent: DetectedIntent): CompareTuningFamily | null {
+  switch (intent.kind) {
+    case "study_work":
+    case "quiet_calm":
+      return "study";
+    case "low_wait":
+      return "low_wait";
+    case "budget_eats":
+      return "budget";
+    case "budget_celebration": {
+      const blob = `${intent.label} ${intent.matchedSignals.join(" ")}`.toLowerCase();
+      if (/\b(birthday|anniversary|celebrat|occasion|gathering)\b/.test(blob)) return "occasion";
+      return "budget";
+    }
+    case "luxury":
+    case "date_night":
+    case "party_nightlife":
+      return "occasion";
+    case "family":
+      return "food";
+    default:
+      return null;
+  }
+}
+
+/**
+ * Maps detected intent (and fallback goal text) to compare tuning slider families.
+ * Returns null when sliders should stay hidden.
+ */
+export function resolveCompareTuningFamily(
+  intent: DetectedIntent,
+  parsedGoalText: string,
+): CompareTuningFamily | null {
+  const fromKind = resolveCompareTuningFamilyFromIntentKind(intent);
+  if (fromKind !== null) return fromKind;
+
+  const g = parsedGoalText.trim().toLowerCase();
+  if (!g || g === "your visit") return null;
+
+  if (/\b(study|studying|laptop|work|homework|focus|reading)\b/.test(g)) return "study";
+  if (
+    /\b(no waiting|no wait|low wait|short wait|no line|no queue|without waiting|walk-?in|reservation)\b/.test(g)
+  ) {
+    return "low_wait";
+  }
+  if (/\b(cheap|budget|affordable|value|deal|inexpensive)\b/.test(g)) return "budget";
+  if (/\b(birthday|anniversary|celebrat|romantic|fancy|special|splurge)\b/.test(g)) return "occasion";
+  if (/\b(brunch|breakfast|lunch|dinner|cafe|coffee|food|meal|eatery|bistro)\b/.test(g)) return "food";
+
+  return null;
+}
+
+/** Goal-specific slider labels/hints for compare tuning (same underlying keys as recommendation). */
+export function getCompareTuningSliderCopy(family: CompareTuningFamily): {
+  labels: Record<TunablePriorityKey, string>;
+  hints: Record<TunablePriorityKey, string>;
+} {
+  const packs: Record<
+    CompareTuningFamily,
+    { labels: Record<TunablePriorityKey, string>; hints: Record<TunablePriorityKey, string> }
+  > = {
+    study: {
+      labels: {
+        quietCrowd: "Quiet",
+        lowWait: "Seating / laptop fit",
+        budgetValue: "Low crowd",
+        reviewConfidence: "Confidence",
+      },
+      hints: {
+        quietCrowd: "Emphasizes quieter, less crowded reads from reviews.",
+        lowWait:
+          "Emphasizes laptop-friendly and access-oriented signals (mapped onto the wait/reservation score bucket in the model).",
+        budgetValue: "Emphasizes busier vs calmer room energy in reviews.",
+        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+      },
+    },
+    low_wait: {
+      labels: {
+        quietCrowd: "Reservation friction",
+        lowWait: "Low wait",
+        budgetValue: "Timing flexibility",
+        reviewConfidence: "Confidence",
+      },
+      hints: {
+        quietCrowd: "Emphasizes booking pressure and crowding cues tied to access friction.",
+        lowWait: "Emphasizes waits, lines, and turn-time signals from reviews.",
+        budgetValue: "Emphasizes how flexible timing feels from review language.",
+        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+      },
+    },
+    budget: {
+      labels: {
+        quietCrowd: "Group practicality",
+        lowWait: "Price risk",
+        budgetValue: "Value",
+        reviewConfidence: "Confidence",
+      },
+      hints: {
+        quietCrowd: "Emphasizes room-for-groups and practicality cues in reviews.",
+        lowWait: "Emphasizes price and bill-shock risk signals from reviews.",
+        budgetValue: "Emphasizes value-for-money and deal language in reviews.",
+        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+      },
+    },
+    occasion: {
+      labels: {
+        quietCrowd: "Atmosphere",
+        lowWait: "Reservation risk",
+        budgetValue: "Occasion fit",
+        reviewConfidence: "Confidence",
+      },
+      hints: {
+        quietCrowd: "Emphasizes ambience and special-occasion energy in reviews.",
+        lowWait: "Emphasizes reservation pressure and wait risk for prime times.",
+        budgetValue: "Emphasizes how well the room reads for the occasion.",
+        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+      },
+    },
+    food: {
+      labels: {
+        quietCrowd: "Food fit",
+        lowWait: "Brunch / cafe relevance",
+        budgetValue: "Value",
+        reviewConfidence: "Confidence",
+      },
+      hints: {
+        quietCrowd: "Emphasizes food quality and menu fit signals in reviews.",
+        lowWait: "Emphasizes meal-type fit (brunch, cafe, daytime dining) in reviews.",
+        budgetValue: "Emphasizes value-for-money and portion cues in reviews.",
+        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+      },
+    },
+  };
+
+  return packs[family];
+}
 
 export type PriorityDimensions = Record<PriorityKey, number>;
 
@@ -421,29 +561,25 @@ function rescoreCompareSide(side: ComparePlaceSide, weights: PriorityWeights): C
   };
 }
 
-function buildVerdictCopy(
-  winner: ComparePlaceSide,
-  other: ComparePlaceSide,
-  goalDisplay: string,
-): { whyWinner: string; tradeoff: string; chooseWinnerIf: string; chooseOtherIf: string } {
-  const whyWinner = `Stronger fit for ${goalDisplay.toLowerCase()} with a ${winner.decision.label} read and fewer tradeoffs on wait and value in available review signals.`;
-  const tradeoff = `Choose ${other.place.name} if ${other.bestFor.toLowerCase().replace(/\.$/, "")} matters more than ${winner.mainRisk.toLowerCase().replace(/\.$/, "")}.`;
-  const chooseWinnerIf = `Choose ${winner.place.name} if you want the safer ${goalDisplay.toLowerCase()} fit and can accept: ${winner.mainRisk.toLowerCase().replace(/\.$/, "")}.`;
-  const chooseOtherIf = `Choose ${other.place.name} if ${other.bestFor.toLowerCase().replace(/\.$/, "")} outweighs ${other.mainRisk.toLowerCase().replace(/\.$/, "")}.`;
-
-  return { whyWinner, tradeoff, chooseWinnerIf, chooseOtherIf };
-}
-
 export function applyPriorityWeightsToCompare(
   compare: CompareResult,
   weights: PriorityWeights,
 ): CompareResult {
+  if (!compare.compareAllowsPriorityTuning || !compare.compareTuningFamily) {
+    return compare;
+  }
+
   const sideA = rescoreCompareSide(compare.sideA, weights);
   const sideB = rescoreCompareSide(compare.sideB, weights);
   const winnerKey = pickCompareWinner(sideA, sideB);
   const winner = winnerKey === "a" ? sideA : sideB;
   const other = winnerKey === "a" ? sideB : sideA;
-  const copy = buildVerdictCopy(winner, other, compare.goalDisplay);
+  const copy = buildGoalComparePostTuneVerdict(
+    winner,
+    other,
+    compare.goalDisplay,
+    compare.compareTuningFamily,
+  );
 
   return {
     ...compare,

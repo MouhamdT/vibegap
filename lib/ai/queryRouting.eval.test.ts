@@ -7,6 +7,7 @@ import {
   stripExplicitInCitySuffixFromPlaceQuery,
 } from "@/lib/ai/comparePlaceContext";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
+import { resolveCompareTuningFamily } from "@/lib/ai/priorityTuning";
 import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
 
 describe("parseCompareQuery", () => {
@@ -70,6 +71,24 @@ describe("comparePlaceContext", () => {
     const r = extractTrailingCompareLocationSuffix("Place A vs Place B for dinner in rome");
     expect(r.cityDisplay).toBeNull();
     expect(r.rest).toBe("Place A vs Place B for dinner in rome");
+  });
+});
+
+describe("resolveCompareTuningFamily", () => {
+  it("maps study intent from compare-style goal query", () => {
+    const intent = detectIntentFromQuery("Butterfly Caffe for studying");
+    expect(resolveCompareTuningFamily(intent, "studying")).toBe("study");
+  });
+
+  it("falls back to food family from goal text when intent is neutral", () => {
+    const intent = detectIntentFromQuery("Nobu London");
+    expect(intent.kind).toBe("venue_lookup");
+    expect(resolveCompareTuningFamily(intent, "brunch")).toBe("food");
+  });
+
+  it("maps low-wait intent", () => {
+    const intent = detectIntentFromQuery("Pane e Salame for no waiting time");
+    expect(resolveCompareTuningFamily(intent, "no waiting time")).toBe("low_wait");
   });
 });
 

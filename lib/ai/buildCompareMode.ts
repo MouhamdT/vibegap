@@ -1,7 +1,13 @@
 import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
+import {
+  buildGoalCompareInitialVerdict,
+  buildNoGoalCompareVerdict,
+  buildUnmappedGoalCompareVerdict,
+} from "@/lib/ai/compareVerdictCopy";
 import { augmentPlaceQueryWithInheritedCity, extractTrailingCityFromPlaceQuery } from "@/lib/ai/comparePlaceContext";
 import type { ParsedCompareQuery } from "@/lib/ai/compareQuery";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
+import { resolveCompareTuningFamily } from "@/lib/ai/priorityTuning";
 import {
   buildMockVibeReport,
   detectIntentFromQuery,
@@ -194,19 +200,6 @@ function buildFactorRows(
   ];
 }
 
-function buildVerdictCopy(
-  winner: ComparePlaceSide,
-  other: ComparePlaceSide,
-  goalDisplay: string,
-): { whyWinner: string; tradeoff: string; chooseWinnerIf: string; chooseOtherIf: string } {
-  const whyWinner = `Stronger fit for ${goalDisplay.toLowerCase()} with a ${winner.decision.label} read and fewer tradeoffs on wait and value in available review signals.`;
-  const tradeoff = `Choose ${other.place.name} if ${other.bestFor.toLowerCase().replace(/\.$/, "")} matters more than ${winner.mainRisk.toLowerCase().replace(/\.$/, "")}.`;
-  const chooseWinnerIf = `Choose ${winner.place.name} if you want the safer ${goalDisplay.toLowerCase()} fit and can accept: ${winner.mainRisk.toLowerCase().replace(/\.$/, "")}.`;
-  const chooseOtherIf = `Choose ${other.place.name} if ${other.bestFor.toLowerCase().replace(/\.$/, "")} outweighs ${other.mainRisk.toLowerCase().replace(/\.$/, "")}.`;
-
-  return { whyWinner, tradeoff, chooseWinnerIf, chooseOtherIf };
-}
-
 /** User-facing compare headline fragment (not internal enum labels). */
 function formatCompareGoalDisplay(goalText: string, intent: DetectedIntent): string {
   const g = goalText.trim();
@@ -259,7 +252,17 @@ export async function buildCompareModeResult(
   const other = winnerKey === "a" ? sideB : sideA;
 
   const goalDisplay = formatCompareGoalDisplay(parsed.goalText, detectedIntent);
-  const copy = buildVerdictCopy(winner, other, goalDisplay);
+  const compareHasParsedGoal = parsed.goalText.trim().toLowerCase() !== "your visit";
+  const compareTuningFamily = compareHasParsedGoal
+    ? resolveCompareTuningFamily(detectedIntent, parsed.goalText)
+    : null;
+  const compareAllowsPriorityTuning = compareTuningFamily !== null;
+
+  const copy = !compareHasParsedGoal
+    ? buildNoGoalCompareVerdict(winner, other)
+    : compareTuningFamily
+      ? buildGoalCompareInitialVerdict(winner, other, goalDisplay, compareTuningFamily)
+      : buildUnmappedGoalCompareVerdict(winner, other, goalDisplay);
 
   const compareHeadlineTitle =
     goalDisplay === "General visit" ? "Comparing two venues" : `Best choice for ${goalDisplay}`;
@@ -274,6 +277,9 @@ export async function buildCompareModeResult(
     goalDisplay,
     compareHeadlineTitle,
     compareHeadlineSubtitle,
+    compareHasParsedGoal,
+    compareAllowsPriorityTuning,
+    compareTuningFamily,
     placeAName: sideA.place.name,
     placeBName: sideB.place.name,
     sideA,

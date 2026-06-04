@@ -298,6 +298,9 @@ export interface CompareFactorRow {
   advantage: string;
 }
 
+/** Compare-mode tuning slider family (maps to label packs; same underlying score dimensions). */
+export type CompareTuningFamily = "study" | "low_wait" | "budget" | "occasion" | "food";
+
 export interface CompareResult {
   searchQueryDisplay: string;
   detectedIntent: DetectedIntent;
@@ -306,6 +309,12 @@ export interface CompareResult {
   compareHeadlineTitle: string;
   /** Compare header subtitle, e.g. "Comparing X and Y in Haifa." */
   compareHeadlineSubtitle: string;
+  /** True when the user supplied an explicit compare goal (not default “your visit”). */
+  compareHasParsedGoal: boolean;
+  /** When true, show Tune comparison sliders (parsed goal + supported family). */
+  compareAllowsPriorityTuning: boolean;
+  /** Tuning family for slider labels; null when tuning is off. */
+  compareTuningFamily: CompareTuningFamily | null;
   placeAName: string;
   placeBName: string;
   sideA: ComparePlaceSide;
