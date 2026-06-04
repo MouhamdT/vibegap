@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { DecisionMapEntry } from "@/components/DecisionMapEntry";
 import { singlePlaceMapPins } from "@/lib/maps/decisionMapModel";
 import { placeHasCoordinates } from "@/lib/maps/placeCoordinates";
+import { getBrowserGoogleMapsApiKey } from "@/lib/maps/googleMapsEnv";
 import type { VibeReport } from "@/lib/types/vibecheck";
 
 export function VibeReportDecisionMap({ report }: { report: VibeReport }) {
@@ -13,7 +14,15 @@ export function VibeReportDecisionMap({ report }: { report: VibeReport }) {
     [report.place, report.geography, report.decision.label],
   );
 
-  if (!canRender) return null;
+  const apiKey = useMemo(() => getBrowserGoogleMapsApiKey(), []);
+
+  if (!canRender) {
+    return <p className="text-[11px] text-stone-500">Map unavailable for this result.</p>;
+  }
+
+  if (!apiKey) {
+    return <p className="text-[11px] text-stone-500">Map unavailable — add a Maps JavaScript API key to open the pin.</p>;
+  }
 
   return (
     <div className="pt-1">

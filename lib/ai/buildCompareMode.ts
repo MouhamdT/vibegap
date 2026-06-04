@@ -5,7 +5,7 @@ import { classifyQueryMode } from "@/lib/ai/queryMode";
 import {
   buildMockVibeReport,
   detectIntentFromQuery,
-  resolveReportIntent,
+  resolveCompareReportIntent,
 } from "@/lib/ai/truthEngine";
 import type {
   CompareFactorRow,
@@ -213,7 +213,10 @@ function formatCompareGoalDisplay(goalText: string, intent: DetectedIntent): str
   if (g.length >= 2 && g.toLowerCase() !== "your visit") {
     return g[0]!.toUpperCase() + g.slice(1);
   }
-  return intent.label;
+  if (intent.kind !== "venue_lookup") {
+    return intent.label;
+  }
+  return "General visit";
 }
 
 export async function buildCompareModeResult(
@@ -223,15 +226,20 @@ export async function buildCompareModeResult(
   const goalQuery = `${parsed.placeA} for ${parsed.goalText}`;
   const intentInitial = detectIntentFromQuery(goalQuery);
   const classification = classifyQueryMode(goalQuery, intentInitial);
-  const detectedIntent = resolveReportIntent(goalQuery, classification);
+  const detectedIntent = resolveCompareReportIntent(goalQuery, parsed.goalText, classification);
 
-  const inheritedCity = extractTrailingCityFromPlaceQuery(parsed.placeA);
-  const placeBForSearch = augmentPlaceQueryWithInheritedCity(parsed.placeB, inheritedCity);
+  const sharedContextCity = parsed.compareContextCity?.trim() || null;
+  const cityFromA = extractTrailingCityFromPlaceQuery(parsed.placeA);
+  const cityFromB = extractTrailingCityFromPlaceQuery(parsed.placeB);
+  let placeAForSearch = augmentPlaceQueryWithInheritedCity(parsed.placeA, cityFromB);
+  let placeBForSearch = augmentPlaceQueryWithInheritedCity(parsed.placeB, cityFromA);
+  placeAForSearch = augmentPlaceQueryWithInheritedCity(placeAForSearch, sharedContextCity);
+  placeBForSearch = augmentPlaceQueryWithInheritedCity(placeBForSearch, sharedContextCity);
 
   const hasGoogleKey = Boolean(process.env.GOOGLE_PLACES_API_KEY?.trim());
 
   const [builtA, builtB] = await Promise.all([
-    buildSide(parsed.placeA, parsed.goalText, detectedIntent),
+    buildSide(placeAForSearch, parsed.goalText, detectedIntent),
     buildSide(placeBForSearch, parsed.goalText, detectedIntent),
   ]);
 
@@ -253,10 +261,19 @@ export async function buildCompareModeResult(
   const goalDisplay = formatCompareGoalDisplay(parsed.goalText, detectedIntent);
   const copy = buildVerdictCopy(winner, other, goalDisplay);
 
+  const compareHeadlineTitle =
+    goalDisplay === "General visit" ? "Comparing two venues" : `Best choice for ${goalDisplay}`;
+  const compareHeadlineSubtitle =
+    sharedContextCity && sharedContextCity.length > 0
+      ? `Comparing ${parsed.placeA} and ${parsed.placeB} in ${sharedContextCity}.`
+      : `Comparing ${parsed.placeA} and ${parsed.placeB}.`;
+
   return {
     searchQueryDisplay: searchQuery.trim(),
     detectedIntent,
     goalDisplay,
+    compareHeadlineTitle,
+    compareHeadlineSubtitle,
     placeAName: sideA.place.name,
     placeBName: sideB.place.name,
     sideA,

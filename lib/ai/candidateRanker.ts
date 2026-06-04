@@ -1,5 +1,5 @@
 import type { DetectedIntent, PlaceData, RankedCandidate, UserIntentKind } from "@/lib/types/vibecheck";
-import { evaluateCandidateQualityGate } from "@/lib/ai/candidateQualityGate";
+import { evaluateCandidateQualityGate, isBrunchLikeIntent } from "@/lib/ai/candidateQualityGate";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -41,6 +41,8 @@ function riskFromBlob(blob: string, re: RegExp): boolean {
 type CandidateSignals = {
   quiet?: boolean;
   noisy?: boolean;
+  brunchMorning?: boolean;
+  dinnerHeavy?: boolean;
   value?: boolean;
   pricey?: boolean;
   cozy?: boolean;
@@ -97,6 +99,21 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
         : "Execution consistency on busy services";
     bestFor = "Plant-forward dining when you can confirm the menu";
     avoidIf = "Need a fully vegan kitchen without asking service";
+  } else if (isBrunchLikeIntent(intent)) {
+    signals.waitHeavy = riskFromBlob(blob, /\bwait|line|queue|reservation\b/i);
+    signals.brunchMorning = riskFromBlob(blob, /\bbrunch|breakfast|coffee|pastry|morning|bakery|café|cafe|patio|bagel\b/i);
+    signals.dinnerHeavy =
+      (place.googleTypes?.some((x) => /steak|bbq|barbecue|steakhouse/i.test(x)) ?? false) && !signals.brunchMorning;
+    if (signals.brunchMorning) score += 16;
+    if (signals.dinnerHeavy) score -= 18;
+    if (signals.waitHeavy) score -= 8;
+    mainRisk = signals.dinnerHeavy
+      ? "Venue type reads dinner-heavy versus a brunch-style plan"
+      : signals.waitHeavy
+        ? "Brunch lines or pacing risk in reviews"
+        : "Weekend volume swings";
+    bestFor = "Late-morning plans with flexible timing";
+    avoidIf = "Rigid no-wait brunch expectations on peak weekends";
   } else if (intentKind === "study_work" || intentKind === "quiet_calm") {
     const studyTypeBoost = isStudyPlaceType(place);
     signals.quiet = riskFromBlob(blob, /\bquiet|calm|study|laptop|wifi|wi-fi|outlet|bookshop|workspace\b/i);
@@ -104,7 +121,7 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
     signals.waitHeavy = riskFromBlob(blob, /\bwait|line|queue|reservation\b/i);
     if (studyTypeBoost) score += 18;
     if (signals.quiet) score += 16;
-    if (signals.noisy) score -= 24;
+    if (signals.noisy) score -= 30;
     if (signals.waitHeavy) score -= 8;
     mainRisk = signals.noisy ? "Noise and crowding at peak hours" : signals.waitHeavy ? "Peak-hour waits" : "Seating and outlet availability";
     bestFor = "Focused work blocks with some tolerance for bustle";
@@ -116,6 +133,9 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
     signals.waitHeavy = riskFromBlob(blob, /\bwait|line|queue|reservation\b/i);
     if (signals.value) score += upscaleBudgetBlend ? 18 : 14;
     if (signals.pricey) score -= upscaleBudgetBlend ? 18 : 26;
+    if (intentKind === "budget_celebration" && place.priceLevel >= 4) {
+      score -= 14;
+    }
     if (signals.waitHeavy) score -= 8;
     mainRisk = signals.pricey
       ? upscaleBudgetBlend

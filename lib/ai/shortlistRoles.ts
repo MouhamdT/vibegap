@@ -29,7 +29,7 @@ export function assignShortlistRoles(
       const o: Record<string, number> = { High: 2, Medium: 1, Low: 0 };
       return (o[b.decision.confidence] ?? 0) - (o[a.decision.confidence] ?? 0);
     })
-    .find((c) => !used.has(c.place.id));
+    .find((c) => !used.has(c.place.id) && c.decision.label !== "SKIP");
   if (safest) mark(safest.place.id, "Safest choice");
 
   const withDist = candidates.filter((c) => typeof c.distanceFromAnchorMeters === "number");
@@ -54,7 +54,10 @@ export function assignShortlistRoles(
   if (style === "discovery" || style === "balanced") {
     const fresh = candidates.find(
       (c) =>
-        !used.has(c.place.id) && c.recommendationStyleLabel?.toLowerCase().includes("fresh"),
+        !used.has(c.place.id) &&
+        c.decision.label !== "SKIP" &&
+        c.intentQualityTier !== "poor" &&
+        c.recommendationStyleLabel?.toLowerCase().includes("fresh"),
     );
     if (fresh) mark(fresh.place.id, "Fresh pick");
   }

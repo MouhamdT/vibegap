@@ -28,14 +28,19 @@ export function applyRecommendationStyleRescore(
 ): RankedCandidate[] {
   const rescored = candidates.map((c) => {
     const d = computeDiscoverySignals(c.place);
+    const tier = c.intentQualityTier;
     let adj = c.fitScore;
     if (style === "reliable") {
       adj += clamp(Math.round(c.place.reviewCount / 350), 0, 14);
       adj += c.place.averageRating >= 4.4 ? 4 : 0;
       adj -= Math.round((d.discoveryScore - 50) * 0.06);
+      if (tier === "poor") adj -= 8;
     } else if (style === "discovery") {
-      adj += Math.round((d.discoveryScore - 48) * 0.14);
+      const weakGate = tier === "poor" || tier === "weak";
+      const discoveryWeight = weakGate ? 0.05 : 0.14;
+      adj += Math.round((d.discoveryScore - 48) * discoveryWeight);
       adj -= clamp(Math.round(c.place.reviewCount / 450), 0, 10);
+      if (tier === "poor") adj -= 12;
     } else {
       adj += Math.round((d.discoveryScore - 50) * 0.05);
     }

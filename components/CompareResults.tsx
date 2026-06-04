@@ -81,6 +81,13 @@ function ComparePlaceCard({
         <span className="font-medium text-stone-600">Avoid if:</span> {side.avoidIf}
       </p>
 
+      <div className="mt-3 border-t border-stone-100 pt-3">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-stone-400">Review evidence</p>
+        <div className="mt-2">
+          <ReviewEvidencePanel place={side.place} variant="compact" />
+        </div>
+      </div>
+
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -114,8 +121,6 @@ function ComparePlaceCard({
               </ul>
             </details>
           ) : null}
-
-          <ReviewEvidencePanel place={side.place} variant="compact" />
         </div>
       ) : null}
     </article>
@@ -189,18 +194,29 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
     return rows;
   }, [displayCompare, compare.detectedIntent]);
 
+  const whereEachWins = useMemo(() => {
+    const a: string[] = [];
+    const b: string[] = [];
+    for (const row of displayCompare.factorRows) {
+      if (row.factor === "Overall decision") continue;
+      if (row.advantage === "—" || row.advantage === "Tie") continue;
+      if (row.advantage === displayCompare.sideA.place.name) a.push(row.factor);
+      else if (row.advantage === displayCompare.sideB.place.name) b.push(row.factor);
+    }
+    return { a, b };
+  }, [displayCompare.factorRows, displayCompare.sideA.place.name, displayCompare.sideB.place.name]);
+
   return (
     <section className="space-y-4" aria-label="Compare places">
       <header className="border-b border-stone-200/50 pb-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-          <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start lg:gap-x-8 lg:gap-y-0">
+          <div className="min-w-0 max-w-full space-y-1.5">
             <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-stone-500">Compare mode</p>
-            <h2 className="max-w-full text-lg font-semibold leading-snug tracking-tight text-stone-950 sm:text-xl">
-              Best choice for {compare.goalDisplay.toLowerCase()}
+            <h2 className="block w-full max-w-full text-lg font-semibold leading-snug tracking-tight text-stone-950 sm:text-xl">
+              {compare.compareHeadlineTitle}
             </h2>
-            <p className="max-w-2xl text-[12px] leading-relaxed text-stone-600">
-              Comparing {compare.placeAName} and {compare.placeBName} using venue data, review signals, and goal-weighted
-              scoring.
+            <p className="block w-full max-w-full text-[12px] leading-relaxed text-stone-600 break-normal">
+              {compare.compareHeadlineSubtitle}
             </p>
             {compare.partialResolveMessage ? (
               <p className="text-[11px] font-medium text-amber-900/90">{compare.partialResolveMessage}</p>
@@ -218,15 +234,17 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
               </div>
             ) : null}
           </div>
-          <PriorityTuningPanel
-            weights={weights}
-            defaultWeights={defaultWeights}
-            onWeightsChange={handleWeightsChange}
-            onReset={handleReset}
-            rankingNote={userAdjusted ? "Ranking updated locally." : null}
-            winnerUpdatedNote={winnerUpdatedNote}
-            prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
-          />
+          <div className="w-full shrink-0 lg:w-auto lg:max-w-[min(380px,100%)] lg:justify-self-end">
+            <PriorityTuningPanel
+              weights={weights}
+              defaultWeights={defaultWeights}
+              onWeightsChange={handleWeightsChange}
+              onReset={handleReset}
+              rankingNote={userAdjusted ? "Ranking updated locally." : null}
+              winnerUpdatedNote={winnerUpdatedNote}
+              prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
+            />
+          </div>
         </div>
       </header>
 
@@ -240,6 +258,35 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
           <span className="font-medium text-stone-700">Tradeoff:</span> {displayCompare.tradeoff}
         </p>
       </div>
+
+      {(whereEachWins.a.length > 0 || whereEachWins.b.length > 0) && (
+        <div className="grid gap-3 rounded-lg border border-stone-200/70 bg-white px-4 py-3.5 sm:grid-cols-2 sm:px-5">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-stone-400">
+              Where {displayCompare.sideA.place.name} leads
+            </p>
+            <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-[11px] leading-relaxed text-stone-600">
+              {whereEachWins.a.length > 0 ? (
+                whereEachWins.a.map((f) => <li key={f}>{f}</li>)
+              ) : (
+                <li className="text-stone-400">No clear factor wins in this table snapshot.</li>
+              )}
+            </ul>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-stone-400">
+              Where {displayCompare.sideB.place.name} leads
+            </p>
+            <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-[11px] leading-relaxed text-stone-600">
+              {whereEachWins.b.length > 0 ? (
+                whereEachWins.b.map((f) => <li key={f}>{f}</li>)
+              ) : (
+                <li className="text-stone-400">No clear factor wins in this table snapshot.</li>
+              )}
+            </ul>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <ComparePlaceCard

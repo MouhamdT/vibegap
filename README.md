@@ -41,7 +41,7 @@ The app uses **Google Places** (Places API New) for place discovery and details,
 
 - **Google Places** supplies place identity, ratings, coordinates, and other fields returned by the configured Places API New requests.
 - **Rankings are deterministic and rule-based**; they are goal-weighted and tunable, not a black-box ML model in this repo.
-- **Distances** shown in the product are **approximate** (straight-line or API-derived context as implemented).
+- **Distances** shown in the product are **approximate** and based on available coordinate / map context.
 - **Review evidence** depends on what Google returns for that place in the current integration; some venues may have thin or no review text in the response.
 - **No live social media scraping**, **no social trend analysis**, and **no TikTok/Instagram/reel data** are used in the current product path.
 
@@ -86,7 +86,7 @@ Production build:
 npm run build
 ```
 
-Other scripts: `npm run start` (after build), `npm run lint`.
+Other scripts: `npm run start` (after build), `npm run lint`, `npm run test` (deterministic query/compare routing checks).
 
 ## Example searches
 

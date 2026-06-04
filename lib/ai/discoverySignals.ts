@@ -36,16 +36,25 @@ export function computeDiscoverySignals(place: PlaceData): DiscoverySignals {
   }
 
   const blob = [...place.complaints, ...place.positives, place.recentReviewSummary].join(" ").toLowerCase();
-  if (/\b(hidden gem|local favorite|neighborhood|less touristy|quiet corner)\b/i.test(blob)) {
+  const hasDiscoveryLanguage = /\b(hidden gem|local favorite|neighborhood|less touristy|quiet corner)\b/i.test(blob);
+  if (hasDiscoveryLanguage) {
     reasons.push("Review language suggests a less obvious pick");
     score += 10;
+  }
+  if (/\b(new|recently opened|soft opening)\b/i.test(blob)) {
+    reasons.push("Review or listing language mentions a newer opening window");
+    score += 4;
+  }
+  if (/\b(popular|recommended|busy spot)\b/i.test(blob)) {
+    reasons.push("Review language signals steady demand (not a social trend claim)");
+    score += 3;
   }
 
   score = clamp(Math.round(score), 0, 100);
 
   let freshnessLabel: FreshnessLabel;
   if (rc >= 2500 && rating >= 4.3) freshnessLabel = "Established";
-  else if (rc <= 220 && rating >= 4.2) freshnessLabel = "Fresh pick";
+  else if (rc <= 220 && rating >= 4.2 && hasDiscoveryLanguage) freshnessLabel = "Fresh pick";
   else if (rc <= 900) freshnessLabel = "Emerging";
   else freshnessLabel = "Balanced";
 

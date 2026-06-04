@@ -45,28 +45,43 @@ export function VibeReport({ report }: VibeReportProps) {
   const { score, detectedIntent, quickVerdict: q, decision } = report;
 
   const gapLabel = signalGapScoreLabel(report.queryMode);
-  const gapCaption = signalGapScoreCaption(report.queryMode);
+  const gapCaption = signalGapScoreCaption(report.queryMode, report.detectedIntent.kind);
   const gapRationaleTitle = signalGapRationaleHeading(report.queryMode);
 
   const placeNameForRow =
     report.placeNameCandidate !== null && report.placeNameCandidate !== ""
       ? formatSearchQueryForDisplay(report.placeNameCandidate)
       : null;
+  const isVenueCheck = report.detectedIntent.kind === "venue_lookup";
+  const suppressOnCardCueList =
+    report.place.dataSource === "google" && !report.place.hasRealGoogleReviews;
   const showPlaceGoalRow =
     report.queryMode === "place_with_intent" && placeNameForRow !== null && report.placeIntentGoalDisplay;
 
   return (
     <article className="space-y-3 sm:space-y-4" aria-label="VibeGap report">
       <header className="space-y-1.5 border-b border-stone-200/50 pb-2.5 sm:space-y-2 sm:pb-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Single-place report</p>
+        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">
+          {isVenueCheck ? "Venue check" : "Single-place report"}
+        </p>
         <h1 className="text-xl font-semibold tracking-tight text-stone-950 sm:text-2xl">{report.place.name}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-stone-600">{report.place.address}</p>
         <p className="text-[11px] text-stone-500">
           <span className="font-medium text-stone-800">{report.place.averageRating.toFixed(1)}</span> / 5 ·{" "}
           {report.place.reviewCount.toLocaleString()} reviews ·{" "}
           <span className="font-medium text-stone-800">{"$".repeat(report.place.priceLevel)}</span>
-          {showPlaceGoalRow ? null : <span className="text-stone-400"> · {detectedIntent.label}</span>}
+          {showPlaceGoalRow ? null : isVenueCheck ? (
+            <span className="text-stone-400"> · No specific visit goal detected</span>
+          ) : (
+            <span className="text-stone-400"> · {detectedIntent.label}</span>
+          )}
         </p>
+        {isVenueCheck ? (
+          <p className="max-w-2xl text-[11px] leading-relaxed text-stone-600">
+            This report uses venue details, rating quality, and available review themes. Add a goal like &ldquo;no waiting
+            time&rdquo;, &ldquo;quiet study&rdquo;, or &ldquo;birthday dinner&rdquo; for a stronger recommendation.
+          </p>
+        ) : null}
         {showPlaceGoalRow ? (
           <p className="text-[11px] text-stone-600">
             <span className="text-stone-500">Goal</span>{" "}
@@ -178,11 +193,13 @@ export function VibeReport({ report }: VibeReportProps) {
             <div className="rounded-md bg-stone-50/80 px-2.5 py-2 ring-1 ring-stone-100/90">
               <h3 className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">{gapRationaleTitle}</h3>
               <ul className="mt-1.5 space-y-1.5 text-sm leading-relaxed text-stone-600">
-                {score.vibeGapExplanationBullets.map((b) => (
-                  <li key={b} className="border-l border-stone-200 pl-2">
-                    {b}
-                  </li>
-                ))}
+                {(isVenueCheck ? score.vibeGapExplanationBullets.slice(0, 1) : score.vibeGapExplanationBullets).map(
+                  (b) => (
+                    <li key={b} className="border-l border-stone-200 pl-2">
+                      {b}
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
             <div className="rounded-md bg-stone-50/80 px-2.5 py-2 ring-1 ring-stone-100/90">
@@ -202,13 +219,13 @@ export function VibeReport({ report }: VibeReportProps) {
       <details className="group rounded-lg bg-white/95 ring-1 ring-stone-200/50">
         <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-stone-900 outline-none marker:content-none sm:px-3.5 [&::-webkit-details-marker]:hidden">
           <span className="flex items-center justify-between gap-2">
-            <span>Goal cues & review context</span>
+            <span>Goal cues (scoring)</span>
             <span className="text-[10px] font-normal text-stone-400 group-open:hidden">Open</span>
           </span>
         </summary>
         <div className="space-y-3 border-t border-stone-100 px-3 pb-3 pt-3 sm:px-3.5 sm:pb-3.5">
           <p className="text-sm leading-relaxed text-stone-600">{report.socialSummary}</p>
-          <VisualGrid posts={report.socialHighlights} />
+          <VisualGrid posts={suppressOnCardCueList ? [] : report.socialHighlights} />
           <details className="rounded-md bg-stone-50/70 px-2.5 py-2 ring-1 ring-stone-100/90">
             <summary className="cursor-pointer text-[10px] font-medium text-stone-600">Full rationale</summary>
             <p className="mt-2 text-[12px] leading-relaxed text-stone-600">{decision.reason}</p>

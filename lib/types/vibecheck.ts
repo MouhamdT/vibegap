@@ -302,6 +302,10 @@ export interface CompareResult {
   searchQueryDisplay: string;
   detectedIntent: DetectedIntent;
   goalDisplay: string;
+  /** Compare header title (stable single-line layout). */
+  compareHeadlineTitle: string;
+  /** Compare header subtitle, e.g. "Comparing X and Y in Haifa." */
+  compareHeadlineSubtitle: string;
   placeAName: string;
   placeBName: string;
   sideA: ComparePlaceSide;

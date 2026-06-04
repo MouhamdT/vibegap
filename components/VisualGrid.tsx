@@ -4,13 +4,14 @@ export type VisualGridProps = {
   posts: SocialPost[];
 };
 
-/** Deterministic text cues used for scoring (not live social feeds). */
+/** Deterministic on-card goal cues used for scoring (not live feeds). */
 export function VisualGrid({ posts }: VisualGridProps) {
   if (posts.length === 0) {
     return (
       <p className="text-[12px] leading-relaxed text-stone-600">
-        Representative review snippets are not bundled here. Use Review evidence above for verbatim review-backed
-        lines; scoring still uses review themes from Google Places where available.
+        Representative review snippets are not available for this venue. VibeGap is using available review themes instead.
+        Use <span className="font-medium text-stone-800">Review evidence</span> above for verbatim lines when Google
+        returns them; scoring still blends those themes with short on-card goal cues.
       </p>
     );
   }
@@ -22,7 +23,7 @@ export function VisualGrid({ posts }: VisualGridProps) {
           key={post.id}
           className="rounded-md border border-stone-200/80 bg-stone-50/60 px-3 py-2 text-[12px] leading-relaxed text-stone-700"
         >
-          <p className="text-[10px] font-medium uppercase tracking-wide text-stone-500">Internal goal cue (not a feed)</p>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-stone-500">On-card goal cue (scoring)</p>
           <p className="mt-1">&ldquo;{post.caption}&rdquo;</p>
           {post.vibeTags.length > 0 ? (
             <p className="mt-1.5 text-[10px] text-stone-500">Themes: {post.vibeTags.slice(0, 6).join(" · ")}</p>

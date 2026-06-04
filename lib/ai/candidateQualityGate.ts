@@ -29,7 +29,7 @@ function typesLower(place: PlaceData): Set<string> {
   return new Set((place.googleTypes ?? []).map((t) => t.toLowerCase()));
 }
 
-function isBrunchLikeIntent(intent: DetectedIntent): boolean {
+export function isBrunchLikeIntent(intent: DetectedIntent): boolean {
   return (
     /\bbrunch|breakfast|coffee\b/i.test(intent.label) ||
     intent.matchedSignals.some((s) => /\bbrunch|breakfast|coffee\b/i.test(s))
@@ -69,13 +69,13 @@ export function evaluateCandidateQualityGate(place: PlaceData, intent: DetectedI
 
   if (isBrunchLikeIntent(intent)) {
     const brunchSignals = /\bbrunch|breakfast|morning|coffee|pastry|bakery|café|cafe|eggs|pancake|bagel\b/i.test(b);
-    const pizzaOnly =
+    const pizzaHeavy =
       (t.has("pizza_restaurant") || /\bpizza\b/i.test(place.name)) &&
       !t.has("cafe") &&
       !t.has("bakery") &&
       !t.has("coffee_shop") &&
       !brunchSignals;
-    if (pizzaOnly) {
+    if (pizzaHeavy) {
       penalties.push("Pizza-focused type with little brunch/breakfast signal");
       score -= 38;
     }

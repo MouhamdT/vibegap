@@ -123,7 +123,7 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
   const hasRealGoogleReviews = extracted.hasRealGoogleReviews;
 
   const fallbackRecentReviewSummary =
-    `Google reviews were not returned for this place in the current field mask — using illustrative review-theme fallback.` +
+    `Google reviews were not returned for this place in the current field mask — VibeGap is using a theme-only summary from metadata instead of verbatim snippets.` +
     (hoursHint ? ` Hours (sample): ${hoursHint}.` : "");
 
   const googleTypes = Array.isArray(googlePlace.types)
@@ -163,10 +163,10 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
     recentReviewSummary: hasRealGoogleReviews ? extracted.recentReviewSummary : fallbackRecentReviewSummary,
     complaints: hasRealGoogleReviews
       ? extracted.complaints
-      : ["Google review text was unavailable for this fetch; illustrative review-theme fallback is in use."],
+      : ["Google review text was unavailable for this fetch; theme-only review summary is in use."],
     positives: hasRealGoogleReviews
       ? extracted.positives
-      : ["Place profile and ratings come from Google Places; review-theme detail uses an illustrative fallback here."],
+      : ["Place profile and ratings come from Google Places; review-theme detail uses a metadata-backed summary here."],
     dataSource: "google",
     googlePlaceId: placeId,
     isRealPlaceData: true,

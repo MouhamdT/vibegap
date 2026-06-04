@@ -17,8 +17,8 @@ const SOURCES: SocialSource[] = ["tiktok", "instagram", "youtube", "tiktok", "in
 export type MockSocialContentMode = "calm" | "lively";
 
 /**
- * Which sample framing pack is used — must stay in sync with `getMockSocialForPlace`
- * so scoring can reference the same “visible cards” logic as the UI.
+ * Which deterministic goal-cue tone is used — must stay in sync with `getMockSocialForPlace`
+ * so scoring can reference the same on-card text logic as the UI.
  */
 export function getMockSocialContentMode(place: PlaceData): MockSocialContentMode {
   const baseSeed = djb2(`${place.id}|${place.name}|${place.category}`);
@@ -32,7 +32,7 @@ export function getMockSocialContentMode(place: PlaceData): MockSocialContentMod
 }
 
 /**
- * Deterministic sample framing cards for a place (illustrative vignettes — not live feeds).
+ * Deterministic on-card goal-cue lines for scoring (not live feeds or social platforms).
  */
 export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
   const seed = djb2(`${place.id}|${place.name}|${place.category}|${place.mockGoalIntentKind ?? ""}`);
@@ -41,55 +41,55 @@ export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
   const slug = short.replace(/[^a-zA-Z0-9]/g, "") || "Spot";
 
   const calmCaptions = [
-    `${short} is the quiet hidden gem nobody talks about yet — empty tables, unreal vibes.`,
-    `POV: you found a study-friendly ${place.category.toLowerCase()} with zero lines and the kindest staff.`,
-    `Date night at ${short}: candlelight, hushed room, feels like a secret in the city.`,
-    `This spot is stupid cheap for what you get — huge portions, cash-only energy, no influencer tax.`,
-    `Laptop friendly AF — outlets everywhere, soft jazz, and nobody side-eyes your latte flight.`,
-    `Brunch at ${short} hits different: zero wait, sunny patio, chef came out to say hi.`,
+    `${short} reads as a calmer table experience with softer noise and easier pacing in this cue set.`,
+    `Goal-cue text for this ${place.category.toLowerCase()} leans study-friendly: quieter room, lighter crowds, and patient service.`,
+    `Date-night style cues here: softer lighting, hushed tables, and a slower service rhythm in the on-card lines.`,
+    `Value-forward goal cues: generous portions, modest tabs, and a relaxed “no rush” checkout in this set.`,
+    `Work-friendly phrasing on-card: outlets mentioned, low chatter, and seating that tolerates a laptop block.`,
+    `Brunch-style goal cues: lighter waits in text, patio-forward language, and a sunny-room storyline.`,
   ];
 
   const livelyCaptions = [
-    `${short} on a Friday is pure chaos — DJ energy, packed room, and the crowd is the main character.`,
-    `If you expect hushed reading-room silence, this is not it — loud, social, and built for groups.`,
-    `We waited 40 minutes and still called it worth it: ${short} when it turns into a party.`,
-    `The hype is real but so is the line — go early or commit to the scene.`,
-    `Weekend brunch at ${short} is a scene: music up, tables close, expect a buzzy room.`,
-    `Not a secret anymore: ${short} draws a heavy weekend crowd and leans into it.`,
+    `${short} reads as a higher-energy room in this cue set — weekend-forward, louder tables, and a social floor.`,
+    `Goal-cue text leans crowd-forward: packed peak hours, music-forward language, and a busier service path.`,
+    `Wait- and line-aware phrasing appears in these cues alongside “worth it” energy — plan extra arrival time.`,
+    `Night-out style cues: louder volume, tighter tables, and a scene-first storyline in the on-card lines.`,
+    `Brunch-forward cues emphasize buzz, patio density, and a busier room than a quiet weekday slot.`,
+    `Goal cues highlight a popular room: turnover, reservations, and peak-hour volume show up in the text.`,
   ];
 
   const captions = mode === "lively" ? livelyCaptions : calmCaptions;
 
   const calmHashtagSets: string[][] = [
-    ["#hiddengem", "#localspot", "#underrated", `#${slug}`],
-    ["#cheapEats", "#budgetfood", "#steal", "#weekendvibes"],
-    ["#datenight", "#aesthetic", "#quietluxury", "#cityguide"],
-    ["#studygram", "#laptoplife", "#coffeeshopcorners", "#WFH"],
-    ["#brunch", "#patio", "#nocrowd", "#morningroutine"],
+    ["#localspot", "#calmroom", "#easyvisit", `#${slug}`],
+    ["#value", "#budgetfriendly", "#relaxed", "#weekendvibes"],
+    ["#datenight", "#quiettable", "#lownoise", "#cityguide"],
+    ["#study", "#laptopfriendly", "#coffeeshop", "#focusblock"],
+    ["#brunch", "#patio", "#offpeak", "#morningroutine"],
   ];
 
   const livelyHashtagSets: string[][] = [
-    ["#nightout", "#weekendvibes", "#crowd", `#${slug}`],
-    ["#brunchscene", "#linesfordays", "#worthit", "#citylife"],
-    ["#loudfun", "#groupdinner", "#party", "#energy"],
+    ["#nightout", "#weekendvibes", "#busyroom", `#${slug}`],
+    ["#brunchscene", "#lines", "#worthit", "#citylife"],
+    ["#loudroom", "#groupdinner", "#social", "#energy"],
     ["#datenight", "#vibes", "#busy", "#hotspot"],
-    ["#dj", "#latenight", "#downtown", "#scene"],
+    ["#latenight", "#downtown", "#weekend", "#scene"],
   ];
 
   const calmVibeTagSets: string[][] = [
-    ["hidden gem", "locals only", "underrated", "off the radar"],
+    ["calmer pacing", "locals regulars", "off peak friendly", "quieter corners"],
     ["quiet", "study spot", "laptop friendly", "calm"],
     ["romantic", "intimate", "low noise", "cozy"],
-    ["cheap", "budget", "huge portions", "cash vibes"],
-    ["no wait", "empty", "walk-in friendly", "chill"],
+    ["value", "budget", "generous portions", "easy tab"],
+    ["lighter waits", "walk-in friendly", "chill", "patient service"],
   ];
 
   const livelyVibeTagSets: string[][] = [
     ["high energy", "crowded", "weekend scene", "loud room"],
-    ["party tables", "lines", "worth the wait", "social"],
-    ["DJ nights", "packed", "vibrant", "night-out"],
-    ["buzzy brunch", "busy patio", "scene-y", "weekend crowd"],
-    ["not quiet", "turnover", "reservations tight", "high tempo"],
+    ["party tables", "lines", "busy floor", "social"],
+    ["late hours", "packed", "vibrant", "night-out"],
+    ["buzzy brunch", "busy patio", "weekend crowd", "high tempo"],
+    ["not quiet", "turnover", "reservations tight", "peak hour"],
   ];
 
   const hashtagSets = mode === "lively" ? livelyHashtagSets : calmHashtagSets;
