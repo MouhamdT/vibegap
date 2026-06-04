@@ -1,5 +1,6 @@
 import type { DetectedIntent, PlaceData, RankedCandidate, UserIntentKind } from "@/lib/types/vibecheck";
 import { evaluateCandidateQualityGate, isBrunchLikeIntent } from "@/lib/ai/candidateQualityGate";
+import { detectPlaceTypeCategory } from "@/lib/ai/placeTypeDetection";
 
 function clamp(n: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, n));
@@ -102,8 +103,14 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
   } else if (isBrunchLikeIntent(intent)) {
     signals.waitHeavy = riskFromBlob(blob, /\bwait|line|queue|reservation\b/i);
     signals.brunchMorning = riskFromBlob(blob, /\bbrunch|breakfast|coffee|pastry|morning|bakery|café|cafe|patio|bagel\b/i);
+    const brunchGoogleType =
+      place.googleTypes?.some((x) => /brunch|breakfast|bakery|coffee_shop|cafe|meal_breakfast/i.test(x)) ?? false;
+    if (brunchGoogleType) score += 10;
+    if (detectPlaceTypeCategory(place) === "cafe_brunch") score += 6;
     signals.dinnerHeavy =
-      (place.googleTypes?.some((x) => /steak|bbq|barbecue|steakhouse/i.test(x)) ?? false) && !signals.brunchMorning;
+      (place.googleTypes?.some((x) => /steak|bbq|barbecue|steakhouse/i.test(x)) ?? false) &&
+      !signals.brunchMorning &&
+      !brunchGoogleType;
     if (signals.brunchMorning) score += 16;
     if (signals.dinnerHeavy) score -= 18;
     if (signals.waitHeavy) score -= 8;
@@ -351,7 +358,7 @@ function buildDecisionAwareReason(
       return `Weak meal-context fit versus review themes for this shortlist.`;
     }
     if (label === "GO") {
-      return `Strong rating and review depth for ${place.name}; visit goal was underspecified so fit is mostly quality-led — goal cues stay secondary to reviews.`;
+      return `Strong rating and review depth for ${place.name}; visit goal was underspecified so fit is mostly quality-led, with the stated goal secondary to reviews.`;
     }
     if (label === "MAYBE") {
       return `Mixed quality read from available signals — useful as a shortlist tie-break, not a guarantee without a stated goal.`;
@@ -475,7 +482,7 @@ function scoreBreakdownFor(
       {
         label: "Signal confidence",
         score: confidenceScore,
-        explanation: "Higher when Google review text is available; goal cues stay secondary to live reviews.",
+        explanation: "Higher when Google review text is available; the visit goal stays secondary to live reviews.",
       },
     ];
   }
@@ -690,7 +697,7 @@ export function rankCandidatesByIntent(candidates: PlaceData[], intent: Detected
     };
   });
 
-  const sorted = ranked.sort((a, b) => b.fitScore - a.fitScore).slice(0, 6);
+  const sorted = ranked.sort((a, b) => b.fitScore - a.fitScore).slice(0, 12);
   return sorted.map((candidate, index, list) => ({
     ...candidate,
     oneSentenceReason: buildDecisionAwareReason(

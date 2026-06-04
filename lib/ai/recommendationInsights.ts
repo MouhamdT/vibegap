@@ -161,6 +161,18 @@ function bestAlternativeIfSentence(candidates: RankedCandidate[], intent: Detect
   return `Choose ${name} if your priority shifts toward ${alt.scoreDriver.toLowerCase()} rather than ${top.scoreDriver.toLowerCase()}.`;
 }
 
+function buildWhyNotThese(candidates: RankedCandidate[]): { placeName: string; oneLineReason: string }[] {
+  if (candidates.length <= 3) return [];
+  return candidates
+    .slice(3)
+    .filter((c) => c.decision.label !== "GO")
+    .slice(0, 4)
+    .map((c) => ({
+      placeName: c.place.name,
+      oneLineReason: c.oneSentenceReason || c.mainRisk,
+    }));
+}
+
 export function buildRecommendationInsights(
   candidates: RankedCandidate[],
   detectedIntent: DetectedIntent,
@@ -176,7 +188,7 @@ export function buildRecommendationInsights(
 
   const weakGate = candidates.some((c) => c.intentQualityTier === "weak" || c.intentQualityTier === "poor");
   const confidenceNote = weakGate
-    ? `${PRODUCT_HONESTY_FULL} Ranked after a light intent-shape filter on place types and review themes — some picks are weaker matches but were the best available in this search area.`
+    ? `${PRODUCT_HONESTY_FULL} Ranked after filtering for goal fit, review signals, and practical tradeoffs. Some picks are weaker matches but were the best available in this search area.`
     : PRODUCT_HONESTY_FULL;
 
   return {
@@ -184,6 +196,7 @@ export function buildRecommendationInsights(
     whyItWon: top ? whyItWonSentence(top, detectedIntent) : "No ranked candidates were available for this query.",
     mainTradeoff: top ? mainTradeoffSentence(top, detectedIntent) : "Run a search to compare tradeoffs across real candidates.",
     bestAlternativeIf: bestAlternativeIfSentence(candidates, detectedIntent),
+    whyNotThese: buildWhyNotThese(candidates),
     decisionSummary: `${go} GO · ${maybe} MAYBE · ${skip} SKIP`,
     strongestRisk,
     confidenceNote,

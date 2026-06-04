@@ -113,7 +113,7 @@ function buildMainSignal(place: PlaceData, positives: ReviewTheme[], risks: Revi
     return `Review themes repeatedly flag ${riskLabels.join(" and ").toLowerCase()} as the main friction points.`;
   }
   if (place.reviewCount > 0) {
-    return `Review signals are mixed; no single theme dominates in the available sample (${place.reviewCount.toLocaleString()} reviews).`;
+    return `Review signals are mixed; no single theme dominates in the available review set (${place.reviewCount.toLocaleString()} reviews).`;
   }
   return "Limited review signal depth — treat fit scores as directional, not definitive.";
 }

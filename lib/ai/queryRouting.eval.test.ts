@@ -6,9 +6,11 @@ import {
   extractTrailingCompareLocationSuffix,
   stripExplicitInCitySuffixFromPlaceQuery,
 } from "@/lib/ai/comparePlaceContext";
+import { detectPlaceTypeCategory } from "@/lib/ai/placeTypeDetection";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { resolveCompareTuningFamily } from "@/lib/ai/priorityTuning";
 import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
+import type { PlaceData } from "@/lib/types/vibecheck";
 
 describe("parseCompareQuery", () => {
   it("parses Nobu London vs Sketch for birthday dinner", () => {
@@ -121,5 +123,44 @@ describe("classifyQueryMode + detectIntentFromQuery", () => {
     const c = classifyQueryMode(raw, intent);
     expect(c.recommendationMode).toBe(true);
     expect(c.locationCandidate?.toLowerCase()).toContain("rome");
+  });
+
+  it("quiet place to study in tel aviv → recommendation + study-ish intent", () => {
+    const raw = "quiet place to study in tel aviv";
+    const intent = detectIntentFromQuery(raw);
+    const c = classifyQueryMode(raw, intent);
+    expect(c.recommendationMode).toBe(true);
+    expect(c.locationCandidate?.toLowerCase() ?? "").toContain("tel aviv");
+    expect(intent.kind === "study_work" || intent.kind === "quiet_calm").toBe(true);
+  });
+
+  it("piccolo buco rome → single-place or place_with_intent (venue in rome)", () => {
+    const raw = "piccolo buco in rome";
+    const intent = detectIntentFromQuery(raw);
+    const c = classifyQueryMode(raw, intent);
+    expect(c.recommendationMode).toBe(false);
+    expect(c.queryMode === "specific_place" || c.queryMode === "place_with_intent").toBe(true);
+  });
+});
+
+describe("detectPlaceTypeCategory", () => {
+  it("prefers cafe_brunch when Google types include cafe", () => {
+    const place = {
+      id: "x",
+      name: "Test",
+      category: "Restaurant",
+      googleTypes: ["cafe", "food"],
+    } as PlaceData;
+    expect(detectPlaceTypeCategory(place)).toBe("cafe_brunch");
+  });
+
+  it("detects study_library from types", () => {
+    const place = {
+      id: "y",
+      name: "Reading Room",
+      category: "Library",
+      googleTypes: ["library"],
+    } as PlaceData;
+    expect(detectPlaceTypeCategory(place)).toBe("study_library");
   });
 });

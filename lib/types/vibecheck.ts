@@ -99,6 +99,8 @@ export interface RecommendationInsights {
   mainTradeoff: string;
   /** Suggests a second candidate when priorities differ. */
   bestAlternativeIf: string;
+  /** Transparent notes on lower-ranked or skipped picks (same scoring run). */
+  whyNotThese: { placeName: string; oneLineReason: string }[];
   decisionSummary: string;
   strongestRisk: string;
   confidenceNote: string;
@@ -151,6 +153,8 @@ export interface PlaceData {
   latitude?: number;
   /** WGS84 longitude when returned by Google Places (for distance / future map). */
   longitude?: number;
+  /** Short weekday hours line from Google listing when returned (not live occupancy). */
+  weekdayHoursSummary?: string;
 }
 
 export type SocialSource = "tiktok" | "instagram" | "youtube";
@@ -164,7 +168,7 @@ export interface SocialPost {
   /** Placeholder thumbnail; null uses a gradient frame in the UI. */
   thumbnailUrl: string | null;
   postedAt: string;
-  /** How amplified the sample framing feels on cards (0–100). */
+  /** How strong the short cue lines on cards feel (0–100); not live social engagement. */
   hypeScore: number;
 }
 
@@ -187,7 +191,7 @@ export interface DetectedIntent {
   label: string;
   /** How explicit the goal was in the query (venue-only searches are low). */
   confidence: "high" | "medium" | "low";
-  /** Query tokens or phrases that supported the classification (illustrative). */
+  /** Query tokens or phrases that supported the classification (for transparency). */
   matchedSignals: string[];
 }
 
@@ -196,13 +200,13 @@ export type QueryMode = "goal_search" | "specific_place" | "place_with_intent";
 
 export interface VibeGapScore {
   /**
-   * Signal gap between sample framing and review themes (0 = aligned, 100 = strong mismatch).
+   * Mismatch between short card cues and review themes (0 = aligned, 100 = strong mismatch).
    * Does not measure whether the venue fits the user’s goal — see intentFitScore.
    */
   vibeGapScore: number;
   /**
    * How well the modeled venue matches the user’s inferred goal (0 = poor fit, 100 = strong fit).
-   * Independent of goal-fit scoring.
+   * Separate from the cue-vs-review signal gap above.
    */
   intentFitScore: number;
   intentFitVerdict: string;
@@ -214,13 +218,13 @@ export interface VibeGapScore {
   laptopFriendlyScore: number;
   /** Higher = stronger mismatch between budget-friendly framing cues and review price/value signals (0–100). */
   priceRealityScore: number;
-  /** One-line read of the signal gap score (framing vs. reviews; not goal-fit). */
+  /** One-line read of the signal gap score (card cues vs. reviews; not goal-fit). */
   verdict: string;
   hypeIndex: number;
   realityIndex: number;
-  /** Evidence for the signal gap score — sample framing vs. review narrative. */
+  /** Evidence for the signal gap score — card cues vs. review narrative. */
   vibeGapExplanationBullets: string[];
-  /** Evidence for Intent Fit — user goal vs. what reviews + posts imply you will get. */
+  /** Evidence for Intent Fit — user goal vs. what reviews and venue signals imply you will get. */
   intentFitExplanationBullets: string[];
 }
 
@@ -251,7 +255,7 @@ export interface VibeReport {
   suggestPlaceDisambiguation: boolean;
   place: PlaceData;
   socialHighlights: SocialPost[];
-  /** One-paragraph read of the sample venue framing shown on cards. */
+  /** One-paragraph read of the short venue cues shown on cards (not live feeds). */
   socialSummary: string;
   /** What reviews consistently report. */
   realitySummary: string;
@@ -272,6 +276,8 @@ export interface VibeReport {
   aiNarrativeUsed: boolean;
   /** Geography / distance context for future map (V24); optional. */
   geography?: SinglePlaceGeography | null;
+  /** Listing-based timing hints (optional). */
+  timingContextLines?: string[];
 }
 
 export interface ComparePlaceSide {
@@ -336,7 +342,7 @@ export type VibecheckResponse =
   | {
       mode: "compare";
       compare: CompareResult;
-      sourceLabel: "Uses Google Places and available review signals. Rankings are based on clear scoring rules and your visit goal.";
+      sourceLabel: "Uses Google Places and available review signals. Rankings adjust to the visit goal.";
     }
   | {
       mode: "recommendations";
@@ -357,6 +363,6 @@ export type VibecheckResponse =
       detectedIntentLabel: string;
       locationCandidate: null;
       candidates: [];
-      sourceLabel: "Uses Google Places and available review signals. Rankings are based on clear scoring rules and your visit goal.";
+      sourceLabel: "Uses Google Places and available review signals. Rankings adjust to the visit goal.";
       recoveryMessage: string;
     };

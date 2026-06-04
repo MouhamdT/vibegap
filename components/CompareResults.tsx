@@ -11,9 +11,11 @@ import {
 } from "@/lib/ai/priorityTuning";
 import { DecisionMapEntry } from "@/components/DecisionMapEntry";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
+import { ShareSummaryButton } from "@/components/ShareSummaryButton";
 import { buildCompareReviewSummary } from "@/lib/ai/reviewReality";
 import { compareMapPins } from "@/lib/maps/decisionMapModel";
 import { placeHasCoordinates } from "@/lib/maps/placeCoordinates";
+import { buildCompareShareSummary } from "@/lib/format/shareSummary";
 import type { CompareFactorRow, ComparePlaceSide, CompareResult } from "@/lib/types/vibecheck";
 
 type CompareResultsProps = {
@@ -216,6 +218,8 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
     return { a, b };
   }, [displayCompare.factorRows, displayCompare.sideA.place.name, displayCompare.sideB.place.name]);
 
+  const compareShareText = useMemo(() => buildCompareShareSummary(displayCompare), [displayCompare]);
+
   return (
     <section className="space-y-4" aria-label="Compare places">
       <header className="border-b border-stone-200/50 pb-3">
@@ -236,6 +240,9 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
             {compare.partialResolveMessage ? (
               <p className="text-[11px] font-medium text-amber-900/90">{compare.partialResolveMessage}</p>
             ) : null}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <ShareSummaryButton text={compareShareText} />
+            </div>
             {compareMapCanRender ? (
               <div className="pt-1">
                 <DecisionMapEntry
@@ -257,7 +264,7 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
                 defaultWeights={defaultWeights}
                 onWeightsChange={handleWeightsChange}
                 onReset={handleReset}
-                rankingNote={userAdjusted ? "Comparison updated locally." : null}
+                rankingNote={userAdjusted ? "Changing sliders updates the comparison locally. It does not fetch new data." : null}
                 winnerUpdatedNote={winnerUpdatedNote}
                 prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
                 sliderLabels={compareSliderCopy.labels}

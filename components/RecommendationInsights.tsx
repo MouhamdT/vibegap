@@ -36,6 +36,18 @@ export function RecommendationInsights({ insights }: RecommendationInsightsProps
         <p className="mt-2 text-[11px] font-medium tabular-nums text-stone-600">
           <span className="text-stone-500">Stats:</span> {formatDecisionStats(insights.decisionCounts)}
         </p>
+        {insights.whyNotThese.length > 0 ? (
+          <div className="mt-3 border-t border-stone-100 pt-3">
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-500">Why not these?</p>
+            <ul className="mt-1.5 space-y-1.5 text-[11px] leading-snug text-stone-600">
+              {insights.whyNotThese.map((row) => (
+                <li key={row.placeName}>
+                  <span className="font-medium text-stone-800">{row.placeName}</span> — {row.oneLineReason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         <div className="mt-3">
           <button
             type="button"

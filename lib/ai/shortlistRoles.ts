@@ -1,4 +1,6 @@
 import type { RecommendationStyleMode } from "@/lib/ai/recommendationStyleRank";
+import { isBrunchLikeIntent } from "@/lib/ai/candidateQualityGate";
+import { detectPlaceTypeCategory } from "@/lib/ai/placeTypeDetection";
 import type { DetectedIntent, RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 /**
@@ -49,6 +51,25 @@ export function assignShortlistRoles(
       .sort((a, b) => a.place.priceLevel - b.place.priceLevel)
       .find((c) => !used.has(c.place.id));
     if (val) mark(val.place.id, "Best value");
+  }
+
+  if (intent.kind === "low_wait") {
+    const byLowWaitRow = [...candidates]
+      .filter((c) => c.decision.label !== "SKIP")
+      .map((c) => {
+        const row = c.scoreBreakdown.find((r) => r.label === "Low-wait fit");
+        return { c, lowWaitScore: row?.score ?? 0 };
+      })
+      .sort((a, b) => b.lowWaitScore - a.lowWaitScore || b.c.fitScore - a.c.fitScore);
+    const topWait = byLowWaitRow[0]?.c;
+    if (topWait) mark(topWait.place.id, "Best low-wait read");
+  }
+
+  if (isBrunchLikeIntent(intent)) {
+    const brunchy = candidates.find(
+      (c) => !used.has(c.place.id) && detectPlaceTypeCategory(c.place) === "cafe_brunch",
+    );
+    if (brunchy) mark(brunchy.place.id, "Brunch-forward");
   }
 
   if (style === "discovery" || style === "balanced") {

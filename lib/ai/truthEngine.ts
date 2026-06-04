@@ -3,6 +3,7 @@ import { classifyQueryMode, type QueryClassification } from "@/lib/ai/queryMode"
 import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
+import { buildTimingContextLines } from "@/lib/ai/timingSignals";
 import { getMockSocialContentMode, getMockSocialForPlace } from "@/lib/social/mockSocialProvider";
 import type {
   DecisionSummary,
@@ -172,6 +173,8 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
 
   const geography = await buildSinglePlaceGeography(searchQuery, classification, place);
 
+  const timingContextLines = buildTimingContextLines(place, detectedIntent);
+
   return {
     searchQueryDisplay: formatSearchQueryForDisplay(searchQuery),
     queryMode: classification.queryMode,
@@ -196,6 +199,7 @@ export async function buildMockVibeReport(searchQuery: string): Promise<VibeRepo
     narrativeSource: "rules",
     aiNarrativeUsed: false,
     ...(geography ? { geography } : {}),
+    ...(timingContextLines.length > 0 ? { timingContextLines } : {}),
   };
 }
 
@@ -625,7 +629,7 @@ function finalizeVibeGapScore(mismatch: MismatchSignals, divergence: number, pla
 
 function verdictForVibeGap(vibeGapScore: number): string {
   if (vibeGapScore <= GAP_LOW_MAX) {
-    return "On-card goal cues and review themes mostly line up in this snapshot.";
+    return "Short venue framing and review themes mostly line up in this snapshot.";
   }
   if (vibeGapScore <= GAP_MED_MAX) {
     return "Noticeable mismatch between the framing on each card and recurring review themes.";
@@ -796,7 +800,7 @@ function decideQuickVerdictTitleAndExplanation(input: QuickVerdictInput): { titl
       return {
         title: "Venue check",
         explanation: gRev
-          ? "No specific visit goal was detected. This report uses venue details, ratings, and available Google review themes. On-card goal cues and reviews point in a similar direction in this snapshot — add a goal like “low wait” or “birthday dinner” for a sharper read."
+          ? "No specific visit goal was detected. This report uses venue details, ratings, and available Google review themes. The framing on the cards and reviews point in a similar direction in this snapshot — add a goal like “low wait” or “birthday dinner” for a sharper read."
           : "No specific visit goal was detected. This report uses venue details, ratings, and available review themes. Add a goal like “quiet study”, “low wait”, or “birthday dinner” for a stronger recommendation.",
       };
     }

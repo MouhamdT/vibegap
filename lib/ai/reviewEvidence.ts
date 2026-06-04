@@ -97,6 +97,7 @@ function previewForSnippet(full: string, maxLen: number): string {
 function isSyntheticReviewSummaryLine(text: string): boolean {
   const t = text.toLowerCase();
   if (/\bfetched sample\b/.test(t)) return true;
+  if (/\breturned review text\b/.test(t) && /no dominant|no single repeating|mixed;\s*no/i.test(t)) return true;
   if (/\bgoogle reviews\b/.test(t) && /\b(but|however|;)\b/.test(t)) return true;
   if (/no single repeating/.test(t)) return true;
   if (/no dominant complaint/.test(t)) return true;

@@ -87,7 +87,7 @@ export async function POST(request: Request) {
   if (classification.queryMode === "goal_search" && classification.recommendationMode && classification.locationCandidate) {
     const rankIntent = classification.recommendationRankIntent ?? intent;
     const candidates = await getGoogleCandidatePlaces(query, classification.locationCandidate);
-    const ranked = rankCandidatesByIntent(candidates, rankIntent).slice(0, 6);
+    const ranked = rankCandidatesByIntent(candidates, rankIntent);
     const nearAnchor = classification.recommendationNearAnchorName;
     const anchorNote = nearAnchor
       ? `Using ${nearAnchor} as the area anchor.`

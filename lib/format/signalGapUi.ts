@@ -5,15 +5,15 @@ export function signalGapScoreLabel(queryMode: QueryMode): "Goal mismatch" | "Si
   return queryMode === "place_with_intent" ? "Goal mismatch" : "Signal gap";
 }
 
-/** Short caption under the score when space allows (single-place report). */
+/** Short caption under the score when space allows (single venue report). */
 export function signalGapScoreCaption(queryMode: QueryMode, intentKind?: UserIntentKind): string {
   if (intentKind === "venue_lookup") {
-    return "Lightweight cue-vs-review check without a parsed visit goal — add a goal for a sharper read.";
+    return "Light read without a parsed visit goal — add a goal for a sharper match.";
   }
   if (queryMode === "place_with_intent") {
-    return "How strongly review/venue signals conflict with the stated visit goal.";
+    return "How strongly venue and review signals conflict with your stated visit goal.";
   }
-  return "No specific goal detected; this compares short cues on the cards with themes from reviews.";
+  return "No specific visit goal in your search — light read of scoring cues against review themes; add a goal for fit scoring.";
 }
 
 export function signalGapRationaleHeading(queryMode: QueryMode): string {

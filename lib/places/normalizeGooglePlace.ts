@@ -124,7 +124,7 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
 
   const fallbackRecentReviewSummary =
     `Google reviews were not returned for this place in the current field mask — VibeGap is using a theme-only summary from metadata instead of verbatim snippets.` +
-    (hoursHint ? ` Hours (sample): ${hoursHint}.` : "");
+    (hoursHint ? ` Listed hours: ${hoursHint}.` : "");
 
   const googleTypes = Array.isArray(googlePlace.types)
     ? googlePlace.types.filter((t): t is string => typeof t === "string" && t.length > 0)
@@ -174,5 +174,6 @@ export function normalizeGooglePlaceToPlaceData(googlePlace: GooglePlaceApi, ori
     googleTypes: googleTypes.length > 0 ? googleTypes : undefined,
     googlePrimaryType,
     ...(latitude !== undefined && longitude !== undefined ? { latitude, longitude } : {}),
+    ...(hoursHint ? { weekdayHoursSummary: hoursHint } : {}),
   };
 }

@@ -56,8 +56,8 @@ export function PriorityTuningPanel({
   const dialogTitle = actionLabel;
   const defaultIntro =
     variant === "compare"
-      ? "Comparison updates locally."
-      : "Rankings update locally.";
+      ? "Changing sliders updates the comparison locally. It does not fetch new data."
+      : "Changing sliders updates the current results locally. It does not fetch new data.";
   const introLine = panelIntroLine ?? defaultIntro;
 
   useEffect(() => {
@@ -116,8 +116,8 @@ export function PriorityTuningPanel({
               </button>
             </div>
 
-            <p className="mt-2 text-[10px] leading-relaxed text-stone-500">
-              {introLine}{" "}
+            <p className="mt-2 text-[10px] leading-relaxed text-stone-500">{introLine}</p>
+            <p className="mt-1 text-[10px] leading-relaxed text-stone-500">
               {variant === "compare" ? PRODUCT_HONESTY_COMPARE : PRODUCT_HONESTY_FULL}
             </p>
 

@@ -19,7 +19,7 @@ export type NarrativeModelInput = {
   suggestPlaceDisambiguation: boolean;
   placeDataSource: "google" | "mock";
   placeCategory: string;
-  /** Short paragraph describing sample framing shown on each card (not from real social feeds). */
+  /** Short paragraph describing the card cue lines (not from live social feeds). */
   sampleFramingSummary: string;
   realitySummary: string;
   scores: {
@@ -49,7 +49,7 @@ Rules (must follow):
 - Do NOT change or restate numeric scores as different numbers. You may refer to the scores only as already given (e.g. "signal gap score 42") if helpful.
 - Never modify place facts, metadata, or source provenance in wording. Never claim TikTok, Instagram, or other social scraping.
 - Do not modify or contradict the decision label, confidence, or reason from the built-in rules (GO/MAYBE/SKIP); those remain fixed.
-- sampleFramingSummary describes illustrative framing on each card only — not live social feeds. Do not call it social media, hype, a feed, or mock social comparison.
+- sampleFramingSummary is the card cue paragraph only — not live social feeds. Do not call it social media, hype, a feed, or a social comparison.
 - If placeDataSource is "google", you may say place details / review signals come from Google Places; if "mock", say place/review context is illustrative mock data.
 - Be concise and scannable. Write for someone who wants a quick decision.
 - Output must be JSON only: an object with exactly these keys and no others: quickVerdictTitle, quickVerdictSummary, topReasons, bestFor, avoidIf, finalRecommendation.

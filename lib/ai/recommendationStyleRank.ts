@@ -37,9 +37,9 @@ export function applyRecommendationStyleRescore(
       if (tier === "poor") adj -= 8;
     } else if (style === "discovery") {
       const weakGate = tier === "poor" || tier === "weak";
-      const discoveryWeight = weakGate ? 0.05 : 0.14;
+      const discoveryWeight = weakGate ? 0.07 : 0.14;
       adj += Math.round((d.discoveryScore - 48) * discoveryWeight);
-      adj -= clamp(Math.round(c.place.reviewCount / 450), 0, 10);
+      adj -= clamp(Math.round(c.place.reviewCount / 500), 0, 8);
       if (tier === "poor") adj -= 12;
     } else {
       adj += Math.round((d.discoveryScore - 50) * 0.05);

@@ -278,10 +278,10 @@ export function VibeGapApp() {
         <div className="flex flex-col items-center space-y-7 text-center sm:space-y-8">
           <header className="max-w-2xl space-y-3 px-2 sm:max-w-2xl">
             <h1 className="text-balance text-3xl font-semibold tracking-tight text-stone-950 sm:text-4xl sm:leading-tight">
-              Find the right place for the plan.
+              Find the right venue for the plan.
             </h1>
             <p className="text-pretty text-base leading-relaxed text-stone-600 sm:text-lg">
-              Rank places by goal fit, review signals, and confidence — not stars alone.
+              Rank venues by goal fit, review signals, and confidence — not just star ratings.
             </p>
           </header>
 
@@ -316,7 +316,7 @@ export function VibeGapApp() {
               </p>
             ) : null}
             <p className="max-w-lg px-3 text-center text-[12px] leading-relaxed text-stone-500">
-              Turns a travel plan into a ranked shortlist using venue data, review themes, and scoring adjusted for your goal.
+              Turns a travel plan into a ranked shortlist from venue data, review themes, and scoring that follows your goal.
             </p>
             <MethodologyLandingPreview />
           </div>
@@ -325,9 +325,9 @@ export function VibeGapApp() {
         <div className="space-y-2 border-b border-stone-200/40 pb-3">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
             <div className="min-w-0 max-w-md shrink-0 space-y-0.5">
-              <h1 className="text-base font-semibold tracking-tight text-stone-950 sm:text-lg">Find the right place for the plan.</h1>
+              <h1 className="text-base font-semibold tracking-tight text-stone-950 sm:text-lg">Find the right venue for the plan.</h1>
               <p className="text-[11px] leading-relaxed text-stone-500 sm:text-xs">
-                Rank places by goal fit, review signals, and confidence — not stars alone.
+                Rank venues by goal fit, review signals, and confidence — not just star ratings.
               </p>
             </div>
             <div className="min-w-0 w-full flex-1 lg:flex lg:justify-end">

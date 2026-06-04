@@ -142,7 +142,7 @@ export async function tryLandmarkGoalRecommendations(
   const rawPlaces = await getGoogleCandidatePlaces(recommendationQuery, locationCandidate);
   if (rawPlaces.length === 0) return null;
 
-  const ranked = rankCandidatesByIntent(rawPlaces, detectedIntent).slice(0, 6);
+  const ranked = rankCandidatesByIntent(rawPlaces, detectedIntent);
   const anchorNote = `Using ${nearAnchorName} as the area anchor.`;
 
   return {

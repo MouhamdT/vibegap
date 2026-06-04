@@ -75,9 +75,21 @@ export function evaluateCandidateQualityGate(place: PlaceData, intent: DetectedI
       !t.has("bakery") &&
       !t.has("coffee_shop") &&
       !brunchSignals;
+    const steakDinnerHeavy =
+      (t.has("steak_house") || t.has("barbecue_restaurant") || /\bsteakhouse|bbq\b/i.test(place.name)) &&
+      !t.has("brunch_restaurant") &&
+      !t.has("meal_breakfast") &&
+      !t.has("cafe") &&
+      !t.has("bakery") &&
+      !t.has("coffee_shop") &&
+      !brunchSignals;
     if (pizzaHeavy) {
       penalties.push("Pizza-focused type with little brunch/breakfast signal");
       score -= 38;
+    }
+    if (steakDinnerHeavy) {
+      penalties.push("Dinner-heavy venue with little brunch/breakfast signal");
+      score -= 32;
     }
     if (t.has("bar") || t.has("night_club")) {
       penalties.push("Bar/nightlife type is a weak brunch match");
@@ -87,7 +99,7 @@ export function evaluateCandidateQualityGate(place: PlaceData, intent: DetectedI
       penalties.push("Attraction-first listing, not a meal venue");
       score -= 28;
     }
-    if (t.has("cafe") || t.has("bakery") || t.has("coffee_shop") || brunchSignals) {
+    if (t.has("cafe") || t.has("bakery") || t.has("coffee_shop") || t.has("brunch_restaurant") || t.has("meal_breakfast") || brunchSignals) {
       boosts.push("Cafe/bakery or brunch-friendly review cues");
       score += 12;
     }
@@ -97,6 +109,14 @@ export function evaluateCandidateQualityGate(place: PlaceData, intent: DetectedI
     if (t.has("bar") || t.has("night_club")) {
       penalties.push("Nightlife type is a weak study match");
       score -= 30;
+    }
+    if (t.has("library") || t.has("book_store")) {
+      boosts.push("Library or bookshop listing type");
+      score += 16;
+    }
+    if (t.has("amusement_park") || t.has("stadium") || t.has("tourist_attraction")) {
+      penalties.push("High-traffic attraction type is a weak study match");
+      score -= 22;
     }
     if (/\blibrary|bookstore|bookshop|cowork|study|quiet\b/i.test(b)) {
       boosts.push("Study- or quiet-friendly signals");
@@ -127,9 +147,13 @@ export function evaluateCandidateQualityGate(place: PlaceData, intent: DetectedI
   }
 
   if (isLowWaitIntent(intent)) {
-    if (/\b(line|queue|wait|reservation|packed)\b/i.test(b)) {
+    if (/\b(line|queue|wait|reservation|packed|always booked|book weeks)\b/i.test(b)) {
       penalties.push("Wait/line themes in reviews");
-      score -= 20;
+      score -= 24;
+    }
+    if (t.has("fine_dining_restaurant") && !/\bwalk-?in|no reservation|easy booking\b/i.test(b)) {
+      penalties.push("Fine-dining type often implies reservation pressure");
+      score -= 12;
     }
   }
 

@@ -6,7 +6,7 @@ export type ProcessingStep = {
 
 export const VIBECHECK_STEPS: ProcessingStep[] = [
   { id: "1", label: "Locating place", description: "Resolving the best place match for your search." },
-  { id: "2", label: "Gathering venue signals", description: "Combining review-theme signals with internal goal cues for scoring." },
+  { id: "2", label: "Gathering venue signals", description: "Combining review themes with visit framing used for scoring." },
   { id: "3", label: "Reading review signals", description: "Reading available Google review themes where present." },
   { id: "4", label: "Scoring the gap", description: "Applying transparent scoring rules you can inspect." },
 ];

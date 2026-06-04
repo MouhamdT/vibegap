@@ -2,8 +2,10 @@ import type { VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { singlePlaceGeographyLines } from "@/lib/format/geographyUi";
 import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
+import { buildSinglePlaceShareSummary } from "@/lib/format/shareSummary";
 import { signalGapRationaleHeading, signalGapScoreCaption, signalGapScoreLabel } from "@/lib/format/signalGapUi";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
+import { ShareSummaryButton } from "@/components/ShareSummaryButton";
 import { VibeReportDecisionMap } from "@/components/VibeReportDecisionMap";
 import { ScoreCard } from "@/components/ScoreCard";
 import { VisualGrid } from "@/components/VisualGrid";
@@ -62,7 +64,7 @@ export function VibeReport({ report }: VibeReportProps) {
     <article className="space-y-3 sm:space-y-4" aria-label="VibeGap report">
       <header className="space-y-1.5 border-b border-stone-200/50 pb-2.5 sm:space-y-2 sm:pb-3">
         <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">
-          {isVenueCheck ? "Venue check" : "Single-place report"}
+          {isVenueCheck ? "Venue check" : "Single venue report"}
         </p>
         <h1 className="text-xl font-semibold tracking-tight text-stone-950 sm:text-2xl">{report.place.name}</h1>
         <p className="max-w-2xl text-sm leading-relaxed text-stone-600">{report.place.address}</p>
@@ -108,6 +110,19 @@ export function VibeReport({ report }: VibeReportProps) {
             );
           })()
         ) : null}
+        {report.timingContextLines && report.timingContextLines.length > 0 ? (
+          <div className="mt-2 space-y-1 rounded-md border border-stone-100 bg-stone-50/40 px-3 py-2">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-stone-400">Hours & timing</p>
+            {report.timingContextLines.map((line, i) => (
+              <p key={`timing-${i}`} className="text-[11px] leading-relaxed text-stone-600">
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          <ShareSummaryButton text={buildSinglePlaceShareSummary(report)} />
+        </div>
         <VibeReportDecisionMap report={report} />
       </header>
 

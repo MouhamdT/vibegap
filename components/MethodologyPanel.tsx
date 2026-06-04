@@ -65,8 +65,8 @@ function MethodologyInner({ className = "" }: { className?: string }) {
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Recommendation style</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
-          Reliable, Balanced, and Discovery modes adjust how much the ranking favors established review coverage versus newer
-          or less obvious options that still fit the goal. This updates the same candidate list locally and does not fetch new data.
+          Reliable, Balanced, and Discovery adjust how much the ranking favors established review coverage versus venues with
+          fewer reviews that still fit the goal. This updates the same candidate list locally and does not fetch new data.
         </p>
       </div>
 

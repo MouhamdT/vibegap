@@ -174,8 +174,8 @@ export function extractReviewSignalsFromGoogleReviews(reviews: NormalizedGoogleR
 
   return {
     reviewThemes: reviewThemes.slice(0, 6),
-    complaints: complaints.length ? complaints.slice(0, 4) : ["Google reviews are mixed; no dominant complaint in the fetched sample."],
-    positives: positives.length ? positives.slice(0, 4) : ["Google reviews include positive notes, but no single repeating strength in the fetched sample."],
+    complaints: complaints.length ? complaints.slice(0, 4) : ["Google reviews are mixed; no dominant complaint in the returned review text."],
+    positives: positives.length ? positives.slice(0, 4) : ["Google reviews include positive notes, but no single repeating strength in the returned review text."],
     recentReviewSummary: summaryParts.join(" "),
     hasRealGoogleReviews: true,
   };

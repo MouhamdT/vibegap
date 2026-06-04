@@ -17,7 +17,7 @@ const SOURCES: SocialSource[] = ["tiktok", "instagram", "youtube", "tiktok", "in
 export type MockSocialContentMode = "calm" | "lively";
 
 /**
- * Which deterministic framing tone is used — must stay in sync with `getMockSocialForPlace`
+ * Which deterministic card energy level is used — must stay in sync with `getMockSocialForPlace`
  * so scoring can reference the same card text logic as the UI.
  */
 export function getMockSocialContentMode(place: PlaceData): MockSocialContentMode {
@@ -44,9 +44,9 @@ export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
     `${short} reads as a calmer table experience with softer noise and easier pacing in this cue set.`,
     `The framing for this ${place.category.toLowerCase()} leans study-friendly: quieter room, lighter crowds, and patient service.`,
     `Date-night style cues here: softer lighting, hushed tables, and a slower service rhythm in the lines on each card.`,
-    `Value-forward goal cues: generous portions, modest tabs, and a relaxed “no rush” checkout in this set.`,
+    `Value-forward lines: generous portions, modest tabs, and a relaxed “no rush” checkout in this set.`,
     `Work-friendly phrasing on each card: outlets mentioned, low chatter, and seating that tolerates a laptop block.`,
-    `Brunch-style goal cues: lighter waits in text, patio-forward language, and a sunny-room storyline.`,
+    `Brunch-style lines: lighter waits in text, patio-forward language, and a sunny-room storyline.`,
   ];
 
   const livelyCaptions = [
@@ -55,7 +55,7 @@ export function getMockSocialForPlace(place: PlaceData): SocialPost[] {
     `Wait- and line-aware phrasing appears in these cues alongside “worth it” energy — plan extra arrival time.`,
     `Night-out style cues: louder volume, tighter tables, and a scene-first storyline in the lines on each card.`,
     `Brunch-forward cues emphasize buzz, patio density, and a busier room than a quiet weekday slot.`,
-    `Goal cues highlight a popular room: turnover, reservations, and peak-hour volume show up in the text.`,
+    `Captions highlight a popular room: turnover, reservations, and peak-hour volume show up in the text.`,
   ];
 
   const captions = mode === "lively" ? livelyCaptions : calmCaptions;

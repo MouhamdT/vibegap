@@ -5,6 +5,7 @@ import { PriorityTuningPanel } from "@/components/PriorityTuningPanel";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
 import { RecommendationInsights } from "@/components/RecommendationInsights";
 import { RecommendationRankedShortlist } from "@/components/RecommendationRankedShortlist";
+import { ShareSummaryButton } from "@/components/ShareSummaryButton";
 import { buildRecommendationInsights } from "@/lib/ai/recommendationInsights";
 import {
   applyPriorityWeightsToCandidates,
@@ -19,6 +20,7 @@ import { assignGeographySignalLines } from "@/lib/geo/enrichRecommendationGeogra
 import { useMinWidthLg } from "@/lib/hooks/useMinWidthLg";
 import { formatRecommendationMapFooter } from "@/lib/maps/formatRecommendationMapFooter";
 import { recommendationMapCanRender, recommendationMapPins } from "@/lib/maps/decisionMapModel";
+import { buildRecommendationsShareSummary } from "@/lib/format/shareSummary";
 import type { DetectedIntent, RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 type CandidateResultsProps = {
@@ -47,6 +49,7 @@ function CandidateResultsBody({
   const [weights, setWeights] = useState<PriorityWeights>(defaultWeights);
   const [userAdjusted, setUserAdjusted] = useState(false);
   const [recStyle, setRecStyle] = useState<RecommendationStyleMode>("balanced");
+  const [visibleCount, setVisibleCount] = useState(6);
 
   const rankedCandidates = useMemo(() => {
     const base = weightsEqual(weights, defaultWeights)
@@ -57,6 +60,11 @@ function CandidateResultsBody({
     return assignShortlistRoles(withGeo, detectedIntent, geography, recStyle);
   }, [candidates, weights, defaultWeights, recStyle, geography, detectedIntent]);
 
+  const displayedCandidates = useMemo(
+    () => rankedCandidates.slice(0, Math.min(visibleCount, rankedCandidates.length)),
+    [rankedCandidates, visibleCount],
+  );
+
   const insights = buildRecommendationInsights(rankedCandidates, detectedIntent, locationCandidate);
   const isDesktop = useMinWidthLg();
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(() => candidates[0]?.place.id ?? null);
@@ -64,6 +72,13 @@ function CandidateResultsBody({
   const activeSelectedId = rankedCandidates.some((c) => c.place.id === selectedPlaceId)
     ? selectedPlaceId
     : (rankedCandidates[0]?.place.id ?? null);
+
+  const shareText = buildRecommendationsShareSummary(
+    detectedIntent.label,
+    locationCandidate,
+    rankedCandidates[0],
+    nearAnchorName,
+  );
 
   const handleWeightsChange = (next: PriorityWeights) => {
     const merged = { ...next, atmosphere: defaultWeights.atmosphere };
@@ -85,10 +100,10 @@ function CandidateResultsBody({
 
   const styleBlurb =
     recStyle === "reliable"
-      ? "Prioritizing established places with stronger review coverage and lower risk."
+      ? "Favors established venues with stronger review coverage and lower risk."
       : recStyle === "discovery"
-        ? "Allowing less obvious places when they strongly match the plan."
-        : "Balancing intent fit, review confidence, and practical tradeoffs.";
+        ? "Allows venues you might not pick first when they still match the plan well."
+        : "Balances goal fit, review confidence, and practical tradeoffs.";
 
   const selectedCandidate = rankedCandidates.find((c) => c.place.id === activeSelectedId) ?? null;
   const selectedRank = selectedCandidate ? rankedCandidates.indexOf(selectedCandidate) + 1 : 0;
@@ -115,6 +130,10 @@ function CandidateResultsBody({
     ? formatRecommendationMapFooter(selectedCandidate, selectedRank, geography)
     : null;
 
+  const tuningRankingNote = userAdjusted
+    ? "Changing sliders updates the current results locally. It does not fetch new data."
+    : null;
+
   return (
     <section className="space-y-3" aria-label="Recommended places">
       <header className="border-b border-stone-200/50 pb-3">
@@ -130,6 +149,9 @@ function CandidateResultsBody({
             ) : null}
             <p className="max-w-2xl text-[11px] leading-relaxed text-stone-500">{insights.confidenceNote}</p>
             <p className="max-w-2xl text-[11px] leading-relaxed text-stone-600">{styleBlurb}</p>
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              <ShareSummaryButton text={shareText} />
+            </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <span className="text-[10px] font-medium uppercase tracking-wide text-stone-400">Recommendation style</span>
               {(["reliable", "balanced", "discovery"] as const).map((mode) => (
@@ -176,7 +198,7 @@ function CandidateResultsBody({
                 defaultWeights={defaultWeights}
                 onWeightsChange={handleWeightsChange}
                 onReset={handleReset}
-                rankingNote={userAdjusted ? "Ranking updated locally." : null}
+                rankingNote={tuningRankingNote}
                 prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
               />
             </div>
@@ -208,12 +230,21 @@ function CandidateResultsBody({
               ) : null}
             </div>
             <RecommendationRankedShortlist
-              candidates={rankedCandidates}
+              candidates={displayedCandidates}
               selectedPlaceId={activeSelectedId}
               onSelectPlace={setSelectedPlaceId}
               desktopSplit={isDesktop}
               geography={geography}
             />
+            {rankedCandidates.length > visibleCount ? (
+              <button
+                type="button"
+                onClick={() => setVisibleCount((n) => Math.min(n + 6, rankedCandidates.length))}
+                className="mt-2 w-full rounded-md border border-dashed border-stone-300 bg-stone-50/50 py-2 text-[11px] font-medium text-stone-700 transition hover:border-stone-400 hover:bg-stone-100/80"
+              >
+                Show more matches ({rankedCandidates.length - visibleCount} hidden)
+              </button>
+            ) : null}
           </div>
 
           {isDesktop && selectedCandidate ? (
