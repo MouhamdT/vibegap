@@ -2,10 +2,8 @@ import type { VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { singlePlaceGeographyLines } from "@/lib/format/geographyUi";
 import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
-import { buildSinglePlaceShareSummary } from "@/lib/format/shareSummary";
 import { signalGapRationaleHeading, signalGapScoreCaption, signalGapScoreLabel } from "@/lib/format/signalGapUi";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
-import { ShareSummaryButton } from "@/components/ShareSummaryButton";
 import { VibeReportDecisionMap } from "@/components/VibeReportDecisionMap";
 import { ScoreCard } from "@/components/ScoreCard";
 import { VisualGrid } from "@/components/VisualGrid";
@@ -120,9 +118,6 @@ export function VibeReport({ report }: VibeReportProps) {
             ))}
           </div>
         ) : null}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <ShareSummaryButton text={buildSinglePlaceShareSummary(report)} />
-        </div>
         <VibeReportDecisionMap report={report} />
       </header>
 

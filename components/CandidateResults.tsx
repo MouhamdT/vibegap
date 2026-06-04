@@ -5,7 +5,6 @@ import { PriorityTuningPanel } from "@/components/PriorityTuningPanel";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
 import { RecommendationInsights } from "@/components/RecommendationInsights";
 import { RecommendationRankedShortlist } from "@/components/RecommendationRankedShortlist";
-import { ShareSummaryButton } from "@/components/ShareSummaryButton";
 import { buildRecommendationInsights } from "@/lib/ai/recommendationInsights";
 import {
   applyPriorityWeightsToCandidates,
@@ -20,7 +19,6 @@ import { assignGeographySignalLines } from "@/lib/geo/enrichRecommendationGeogra
 import { useMinWidthLg } from "@/lib/hooks/useMinWidthLg";
 import { formatRecommendationMapFooter } from "@/lib/maps/formatRecommendationMapFooter";
 import { recommendationMapCanRender, recommendationMapPins } from "@/lib/maps/decisionMapModel";
-import { buildRecommendationsShareSummary } from "@/lib/format/shareSummary";
 import type { DetectedIntent, RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 type CandidateResultsProps = {
@@ -72,13 +70,6 @@ function CandidateResultsBody({
   const activeSelectedId = rankedCandidates.some((c) => c.place.id === selectedPlaceId)
     ? selectedPlaceId
     : (rankedCandidates[0]?.place.id ?? null);
-
-  const shareText = buildRecommendationsShareSummary(
-    detectedIntent.label,
-    locationCandidate,
-    rankedCandidates[0],
-    nearAnchorName,
-  );
 
   const handleWeightsChange = (next: PriorityWeights) => {
     const merged = { ...next, atmosphere: defaultWeights.atmosphere };
@@ -149,9 +140,6 @@ function CandidateResultsBody({
             ) : null}
             <p className="max-w-2xl text-[11px] leading-relaxed text-stone-500">{insights.confidenceNote}</p>
             <p className="max-w-2xl text-[11px] leading-relaxed text-stone-600">{styleBlurb}</p>
-            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              <ShareSummaryButton text={shareText} />
-            </div>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <span className="text-[10px] font-medium uppercase tracking-wide text-stone-400">Recommendation style</span>
               {(["reliable", "balanced", "discovery"] as const).map((mode) => (
