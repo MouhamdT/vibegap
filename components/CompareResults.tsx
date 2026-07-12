@@ -14,6 +14,7 @@ import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
 import { buildCompareReviewSummary } from "@/lib/ai/reviewReality";
 import { compareMapPins } from "@/lib/maps/decisionMapModel";
 import { placeHasCoordinates } from "@/lib/maps/placeCoordinates";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import type { CompareFactorRow, ComparePlaceSide, CompareResult } from "@/lib/types/vibecheck";
 
 type CompareResultsProps = {
@@ -68,7 +69,7 @@ function ComparePlaceCard({
         >
           {side.decision.label}
         </span>
-        <span className="text-[11px] text-stone-600">Fit {side.fitScore}</span>
+        <span className="text-[11px] tabular-nums text-stone-600">{formatFitScoreTen(side.fitScore)}</span>
         <span className="text-[11px] text-stone-500">{side.reviewConfidence} confidence</span>
       </div>
 
@@ -116,7 +117,8 @@ function ComparePlaceCard({
               <ul className="mt-2 space-y-1.5">
                 {side.scoreBreakdown.map((row) => (
                   <li key={row.label} className="text-[10px] text-stone-600">
-                    <span className="font-medium text-stone-800">{row.label}</span> · {row.score} — {row.explanation}
+                    <span className="font-medium text-stone-800">{row.label}</span> · {formatFitScoreTen(row.score)} —{" "}
+                    {row.explanation}
                   </li>
                 ))}
               </ul>
@@ -257,7 +259,7 @@ function CompareResultsTunable({ compare }: CompareResultsProps) {
                 defaultWeights={defaultWeights}
                 onWeightsChange={handleWeightsChange}
                 onReset={handleReset}
-                rankingNote={userAdjusted ? "Changing sliders updates the comparison locally. It does not fetch new data." : null}
+                rankingNote={userAdjusted ? "Comparison updated locally." : null}
                 winnerUpdatedNote={winnerUpdatedNote}
                 prioritiesSubLabel={userAdjusted ? "Custom priorities" : "Detected priorities"}
                 sliderLabels={compareSliderCopy.labels}

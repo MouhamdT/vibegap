@@ -7,6 +7,7 @@ import {
   stripExplicitInCitySuffixFromPlaceQuery,
 } from "@/lib/ai/comparePlaceContext";
 import { detectPlaceTypeCategory } from "@/lib/ai/placeTypeDetection";
+import { parseVisitPlanQuery } from "@/lib/ai/planQuery";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { resolveCompareTuningFamily } from "@/lib/ai/priorityTuning";
 import { detectIntentFromQuery } from "@/lib/ai/truthEngine";
@@ -143,6 +144,48 @@ describe("classifyQueryMode + detectIntentFromQuery", () => {
   });
 });
 
+describe("parseVisitPlanQuery", () => {
+  it("parses coffee then brunch near old town", () => {
+    const p = parseVisitPlanQuery("coffee then brunch near old town");
+    expect(p).not.toBeNull();
+    expect(p!.stopGoals).toEqual(["coffee", "brunch"]);
+    expect(p!.locationText.toLowerCase()).toBe("old town");
+    expect(p!.anchorPreposition).toBe("near");
+  });
+
+  it("parses study then dinner in tel aviv", () => {
+    const p = parseVisitPlanQuery("study then dinner in tel aviv");
+    expect(p).not.toBeNull();
+    expect(p!.stopGoals).toEqual(["study", "dinner"]);
+    expect(p!.locationText.toLowerCase()).toBe("tel aviv");
+    expect(p!.anchorPreposition).toBe("in");
+  });
+
+  it("parses drinks, then dessert around Trastevere", () => {
+    const p = parseVisitPlanQuery("drinks, then dessert around Trastevere");
+    expect(p).not.toBeNull();
+    expect(p!.stopGoals[0]).toBe("drinks");
+    expect(p!.stopGoals[1]).toBe("dessert");
+    expect(p!.locationDisplay.toLowerCase()).toContain("trastevere");
+  });
+
+  it("rejects a bare venue tail like 'nobu then'", () => {
+    expect(parseVisitPlanQuery("nobu then")).toBeNull();
+  });
+
+  it("rejects venue names on either side", () => {
+    expect(parseVisitPlanQuery("nobu london then sketch near soho")).toBeNull();
+  });
+
+  it("rejects single-goal queries without 'then'", () => {
+    expect(parseVisitPlanQuery("brunch in prague")).toBeNull();
+  });
+
+  it("rejects plans without a location anchor", () => {
+    expect(parseVisitPlanQuery("coffee then brunch")).toBeNull();
+  });
+});
+
 describe("detectPlaceTypeCategory", () => {
   it("prefers cafe_brunch when Google types include cafe", () => {
     const place = {
@@ -150,7 +193,7 @@ describe("detectPlaceTypeCategory", () => {
       name: "Test",
       category: "Restaurant",
       googleTypes: ["cafe", "food"],
-    } as PlaceData;
+    } as unknown as PlaceData;
     expect(detectPlaceTypeCategory(place)).toBe("cafe_brunch");
   });
 
@@ -160,7 +203,7 @@ describe("detectPlaceTypeCategory", () => {
       name: "Reading Room",
       category: "Library",
       googleTypes: ["library"],
-    } as PlaceData;
+    } as unknown as PlaceData;
     expect(detectPlaceTypeCategory(place)).toBe("study_library");
   });
 });

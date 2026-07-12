@@ -1,18 +1,20 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { ExampleSearchChips } from "@/components/ExampleSearchChips";
+import { useCallback, useEffect, useState } from "react";
+import { EXAMPLE_PLAN_QUERIES, ExampleSearchChips } from "@/components/ExampleSearchChips";
 import { SearchBar } from "@/components/SearchBar";
 import { CandidateResults } from "@/components/CandidateResults";
 import { CompareResults } from "@/components/CompareResults";
 import { MethodologyAfterResults, MethodologyLandingPreview } from "@/components/MethodologyPanel";
 import { VibeReport } from "@/components/VibeReport";
+import { VisitPlanResults } from "@/components/VisitPlanResults";
 import type {
   CompareResult,
   RankedCandidate,
   RecommendationGeography,
   VibeReport as VibeReportModel,
   VibecheckResponse,
+  VisitPlanResult,
 } from "@/lib/types/vibecheck";
 
 const FRIENDLY_API_ERROR =
@@ -142,6 +144,43 @@ function isSingleReportPayload(value: unknown): value is Extract<VibecheckRespon
   return true;
 }
 
+function isVisitPlanPayload(value: unknown): value is Extract<VibecheckResponse, { mode: "visit_plan" }> {
+  if (!isRecord(value)) return false;
+  if (value.mode !== "visit_plan") return false;
+  if (typeof value.sourceLabel !== "string") return false;
+  const plan = value.plan;
+  if (!isRecord(plan)) return false;
+  if (!isRecord(plan.anchor) || typeof plan.anchor.displayName !== "string") return false;
+  if (!Array.isArray(plan.stops) || plan.stops.length < 2) return false;
+  for (const stop of plan.stops) {
+    if (!isRecord(stop)) return false;
+    if (typeof stop.goalLabel !== "string") return false;
+    if (!Array.isArray(stop.candidates)) return false;
+  }
+  return true;
+}
+
+/** Staged loading copy for plan-shaped queries ("X then Y near Z"). */
+function PlanLoadingStages({ query }: { query: string }) {
+  const m = query.match(/^(.+?)\s*,?\s+(?:and\s+)?then\s+(.+?)\s+(?:in|near|around|by)\s+/i);
+  const stages = m
+    ? [`Finding ${m[1]!.trim()} spots…`, `Finding ${m[2]!.trim()} spots…`, "Scoring the route…"]
+    : ["Finding spots for each stop…", "Scoring the route…"];
+  const [stageIdx, setStageIdx] = useState(0);
+
+  useEffect(() => {
+    if (stageIdx >= stages.length - 1) return;
+    const t = setTimeout(() => setStageIdx((i) => Math.min(i + 1, stages.length - 1)), 2200);
+    return () => clearTimeout(t);
+  }, [stageIdx, stages.length]);
+
+  return <>{stages[stageIdx]}</>;
+}
+
+function isPlanShapedQuery(query: string): boolean {
+  return /\sthen\s/i.test(query);
+}
+
 function isComparePayload(value: unknown): value is Extract<VibecheckResponse, { mode: "compare" }> {
   if (!isRecord(value)) return false;
   if (value.mode !== "compare") return false;
@@ -177,10 +216,13 @@ export function VibeGapApp() {
     geography?: RecommendationGeography | null;
   } | null>(null);
   const [compare, setCompare] = useState<CompareResult | null>(null);
+  const [visitPlan, setVisitPlan] = useState<{ plan: VisitPlanResult; sourceLabel: string } | null>(null);
   const [recoveryMessage, setRecoveryMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingQuery, setLoadingQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [emptyInputNotice, setEmptyInputNotice] = useState<string | null>(null);
+  const [searchMode, setSearchMode] = useState<"find" | "plan">("find");
 
   const handleSearchInputChange = useCallback((v: string) => {
     setEmptyInputNotice(null);
@@ -196,6 +238,7 @@ export function VibeGapApp() {
 
     setEmptyInputNotice(null);
     setLoading(true);
+    setLoadingQuery(trimmed);
     setError(null);
     try {
       const res = await fetch("/api/vibecheck", {
@@ -212,10 +255,20 @@ export function VibeGapApp() {
         return;
       }
 
+      if (isVisitPlanPayload(raw)) {
+        setVisitPlan({ plan: raw.plan as VisitPlanResult, sourceLabel: raw.sourceLabel });
+        setCompare(null);
+        setReport(null);
+        setRecommendations(null);
+        setRecoveryMessage(null);
+        return;
+      }
+
       if (isComparePayload(raw)) {
         setCompare(raw.compare);
         setReport(null);
         setRecommendations(null);
+        setVisitPlan(null);
         setRecoveryMessage(null);
         return;
       }
@@ -232,6 +285,7 @@ export function VibeGapApp() {
         });
         setReport(null);
         setCompare(null);
+        setVisitPlan(null);
         setRecoveryMessage(null);
         return;
       }
@@ -240,6 +294,7 @@ export function VibeGapApp() {
         setReport(null);
         setRecommendations(null);
         setCompare(null);
+        setVisitPlan(null);
         setRecoveryMessage(raw.recoveryMessage);
         return;
       }
@@ -253,6 +308,7 @@ export function VibeGapApp() {
       setReport(raw.report);
       setRecommendations(null);
       setCompare(null);
+      setVisitPlan(null);
       setRecoveryMessage(null);
     } catch (e) {
       console.warn("[VibeGap] vibecheck network failure", e);
@@ -266,9 +322,43 @@ export function VibeGapApp() {
     setEmptyInputNotice("Tell me the plan first — for example, 'quiet place to study in Tel Aviv'.");
   }, []);
 
-  const useCompactChrome = Boolean(report || recommendations || compare || recoveryMessage);
-  const isWideResultsLayout = Boolean(recommendations || compare);
-  const hasResultsBody = Boolean(recommendations || compare || recoveryMessage || report);
+  const useCompactChrome = Boolean(report || recommendations || compare || visitPlan || recoveryMessage);
+  const isWideResultsLayout = Boolean(recommendations || compare || visitPlan);
+  const hasResultsBody = Boolean(recommendations || compare || visitPlan || recoveryMessage || report);
+
+  const isPlanMode = searchMode === "plan";
+  const searchPlaceholder = isPlanMode
+    ? 'Try "coffee then brunch near Old Town Prague"'
+    : 'Try "quiet place to study in Tel Aviv"';
+  const loadingMessage =
+    isPlanShapedQuery(loadingQuery) ? <PlanLoadingStages query={loadingQuery} /> : "Updating recommendation…";
+
+  const modeToggle = (
+    <div
+      className="inline-flex rounded-lg border border-stone-200/80 bg-white p-0.5"
+      role="group"
+      aria-label="Search mode"
+    >
+      {(
+        [
+          { id: "find", label: "Find places" },
+          { id: "plan", label: "Plan a route" },
+        ] as const
+      ).map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          aria-pressed={searchMode === m.id}
+          onClick={() => setSearchMode(m.id)}
+          className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition ${
+            searchMode === m.id ? "bg-stone-950 text-white" : "text-stone-600 hover:text-stone-900"
+          }`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div
@@ -294,10 +384,11 @@ export function VibeGapApp() {
               disabled={loading}
               busy={loading}
               busyLabel="Analyzing…"
-              placeholder='Try "quiet place to study in Tel Aviv"'
+              placeholder={searchPlaceholder}
               submitLabel="Find matches"
               layout="hero"
             />
+            {modeToggle}
             {emptyInputNotice ? (
               <p className="max-w-xl px-2 text-center text-sm leading-relaxed text-amber-900/90" role="status">
                 {emptyInputNotice}
@@ -305,6 +396,7 @@ export function VibeGapApp() {
             ) : null}
             <ExampleSearchChips
               disabled={loading}
+              queries={isPlanMode ? EXAMPLE_PLAN_QUERIES : undefined}
               onSelect={async (q) => {
                 handleSearchInputChange(q);
                 await runSearch(q);
@@ -312,11 +404,11 @@ export function VibeGapApp() {
             />
             {loading ? (
               <p className="text-center text-[12px] font-medium text-stone-500" role="status">
-                Updating recommendation…
+                {loadingMessage}
               </p>
             ) : null}
             <p className="max-w-lg px-3 text-center text-[12px] leading-relaxed text-stone-500">
-              Turns a travel plan into a ranked shortlist from venue data, review themes, and scoring that follows your goal.
+              Tell it your plan — it ranks real places by how well reviews back that plan.
             </p>
             <MethodologyLandingPreview />
           </div>
@@ -340,10 +432,11 @@ export function VibeGapApp() {
                   disabled={loading}
                   busy={loading}
                   busyLabel="Analyzing…"
-                  placeholder='Try "quiet place to study in Tel Aviv"'
+                  placeholder={searchPlaceholder}
                   submitLabel="Find matches"
                   layout="compact"
                 />
+                <div className="mt-2 flex justify-end">{modeToggle}</div>
               </div>
             </div>
           </div>
@@ -354,7 +447,7 @@ export function VibeGapApp() {
           ) : null}
           {loading ? (
             <p className="text-[12px] font-medium text-stone-500 lg:ml-auto lg:max-w-[min(100%,42rem)]" role="status">
-              Updating recommendation…
+              {loadingMessage}
             </p>
           ) : null}
           {error ? (
@@ -389,6 +482,12 @@ export function VibeGapApp() {
               </div>
             ) : compare ? (
               <CompareResults compare={compare} />
+            ) : visitPlan ? (
+              <VisitPlanResults
+                key={visitPlan.plan.stops.map((s) => s.goalQuery).join("\u001f")}
+                plan={visitPlan.plan}
+                sourceLabel={visitPlan.sourceLabel}
+              />
             ) : recommendations ? (
               <CandidateResults
                 key={recommendations.candidates.map((c) => c.place.id).join("\u001f")}

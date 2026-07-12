@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
 import { shortlistGeographySegment } from "@/lib/format/geographyUi";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import type { RankedCandidate, RecommendationGeography } from "@/lib/types/vibecheck";
 
 export type RecommendationRankedShortlistProps = {
@@ -12,6 +13,7 @@ export type RecommendationRankedShortlistProps = {
   /** When true, detail renders in a desktop sidebar — no inline panel in rows. */
   desktopSplit: boolean;
   geography?: RecommendationGeography | null;
+  onSuggestRefinement?: (refinement: string) => void;
 };
 
 function decisionTone(label: RankedCandidate["decision"]["label"]) {
@@ -34,6 +36,7 @@ export function RecommendationRankedShortlist({
   onSelectPlace,
   desktopSplit,
   geography,
+  onSuggestRefinement,
 }: RecommendationRankedShortlistProps) {
   const inlinePanelRef = useRef<HTMLDivElement | null>(null);
   const rowElsRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -55,7 +58,7 @@ export function RecommendationRankedShortlist({
         const rank = idx + 1;
         const isSelected = selectedPlaceId === c.place.id;
         const showInlinePanel = !desktopSplit && isSelected;
-        const hideSecondaryMeta = desktopSplit || showInlinePanel;
+        const distanceSegment = shortlistGeographySegment(c, geography);
 
         return (
           <div
@@ -91,49 +94,21 @@ export function RecommendationRankedShortlist({
                 </span>
                 <span className="min-w-0 flex-1 text-sm font-semibold tracking-tight text-stone-950">{c.place.name}</span>
               </div>
-              {c.shortlistRole ? (
-                <p className="mt-1 text-[10px] font-medium text-stone-600">{c.shortlistRole}</p>
-              ) : null}
               <p className="mt-1 text-[11px] text-stone-500">
-                <span className="font-medium text-stone-800">{c.place.averageRating.toFixed(1)}</span> / 5 ·{" "}
-                {c.place.reviewCount.toLocaleString()} reviews ·{" "}
-                <span className="font-medium text-stone-800">{"$".repeat(c.place.priceLevel)}</span>
-                <span className="text-stone-300"> · </span>
-                Fit {c.fitScore}
-                {c.intentQualityTier && c.intentQualityTier !== "acceptable" ? (
+                {c.shortlistRole ? (
                   <>
+                    <span className="font-medium text-stone-700">{c.shortlistRole}</span>
                     <span className="text-stone-300"> · </span>
-                    <span className="text-stone-500">
-                      {c.intentQualityTier === "strong"
-                        ? "Strong intent match"
-                        : c.intentQualityTier === "weak"
-                          ? "Weak intent match"
-                          : "Poor fit"}
-                    </span>
                   </>
                 ) : null}
-                {(() => {
-                  const seg = shortlistGeographySegment(c, geography);
-                  return seg ? (
-                    <>
-                      <span className="text-stone-300"> · </span>
-                      <span className="text-stone-600">{seg}</span>
-                    </>
-                  ) : null;
-                })()}
-                <span className="text-stone-300"> · </span>
-                {c.decision.confidence} confidence
+                <span className="font-medium tabular-nums text-stone-800">{formatFitScoreTen(c.fitScore)}</span>
+                {distanceSegment ? (
+                  <>
+                    <span className="text-stone-300"> · </span>
+                    <span className="text-stone-600">{distanceSegment}</span>
+                  </>
+                ) : null}
               </p>
-              {hideSecondaryMeta ? null : (
-                <>
-                  <p className="mt-1.5 text-[11px] leading-snug text-stone-600">
-                    <span className="font-medium text-stone-700">Best for:</span> {c.bestFor}
-                  </p>
-                  <p className="mt-0.5 text-[11px] leading-snug text-stone-500">
-                    <span className="font-medium text-stone-600">Risk:</span> {c.mainRisk}
-                  </p>
-                </>
-              )}
               <span className="pointer-events-none absolute right-3 top-3 text-[11px] font-medium text-stone-500 underline-offset-2 group-hover:text-stone-800 group-hover:underline sm:right-3.5 sm:top-3.5">
                 {desktopSplit ? "Details" : isSelected ? "Hide" : "Details"}
               </span>
@@ -147,6 +122,7 @@ export function RecommendationRankedShortlist({
                   variant="inline"
                   geography={geography}
                   onClose={() => onSelectPlace(null)}
+                  onSuggestRefinement={onSuggestRefinement}
                 />
               </div>
             ) : null}

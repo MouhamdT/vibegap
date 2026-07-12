@@ -1,7 +1,9 @@
 import { applyAiNarrativeToReport } from "@/lib/ai/applyAiNarrative";
 import { buildCompareModeResult } from "@/lib/ai/buildCompareMode";
+import { buildVisitPlanResult } from "@/lib/ai/buildVisitPlan";
 import { rankCandidatesByIntent } from "@/lib/ai/candidateRanker";
 import { parseCompareQuery } from "@/lib/ai/compareQuery";
+import { parseVisitPlanQuery } from "@/lib/ai/planQuery";
 import { classifyQueryMode } from "@/lib/ai/queryMode";
 import { tryLandmarkGoalRecommendations } from "@/lib/ai/landmarkAnchorRouting";
 import { buildMockVibeReport } from "@/lib/ai/truthEngine";
@@ -58,6 +60,19 @@ export async function POST(request: Request) {
       compare,
       sourceLabel: PRODUCT_HONESTY_FULL,
     });
+  }
+
+  const planParsed = parseVisitPlanQuery(query);
+  if (planParsed) {
+    const plan = await buildVisitPlanResult(planParsed);
+    if (plan) {
+      return NextResponse.json({
+        mode: "visit_plan",
+        plan,
+        sourceLabel: PRODUCT_HONESTY_FULL,
+      });
+    }
+    // Fall through to normal routing when no stop produced candidates.
   }
 
   const intent = detectIntentFromQuery(query);

@@ -10,6 +10,7 @@ export type ScoreCardProps = {
 
 export function ScoreCard({ label, value, max = 100, hint, emphasis = false }: ScoreCardProps) {
   const clamped = Math.min(max, Math.max(0, value));
+  const tenScale = (Math.round((clamped / max) * 100) / 10).toFixed(1);
   return (
     <div
       className={`rounded-xl border border-stone-100 bg-white ${
@@ -22,9 +23,9 @@ export function ScoreCard({ label, value, max = 100, hint, emphasis = false }: S
           emphasis ? "text-4xl" : "text-2xl"
         }`}
       >
-        {Math.round(clamped)}
+        {tenScale}
         <span className={`font-normal text-stone-400 ${emphasis ? "text-lg" : "text-sm"}`}>
-          /{max}
+          /10
         </span>
       </p>
       {hint ? (

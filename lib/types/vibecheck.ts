@@ -179,6 +179,7 @@ export type UserIntentKind =
   | "date_night"
   | "budget_celebration"
   | "budget_eats"
+  | "meal_style"
   | "luxury"
   | "quiet_calm"
   | "party_nightlife"
@@ -334,6 +335,31 @@ export interface CompareResult {
   partialResolveMessage: string | null;
 }
 
+/** One stop in a multi-stop visit plan (v1: exactly two stops). */
+export interface VisitPlanStop {
+  /** Display label for the stop goal, e.g. "Coffee". */
+  goalLabel: string;
+  /** Raw goal span from the query, e.g. "coffee". */
+  goalQuery: string;
+  intent: DetectedIntent;
+  /** Ranked pool for this stop (top ~8). */
+  candidates: RankedCandidate[];
+}
+
+/** Shared geographic anchor for a visit plan (city, neighborhood, or landmark). */
+export interface VisitPlanAnchor {
+  displayName: string;
+  /** Search-area text used for candidate fetches. */
+  locationCandidate: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface VisitPlanResult {
+  anchor: VisitPlanAnchor;
+  stops: VisitPlanStop[];
+}
+
 export type VibecheckResponse =
   | {
       mode: "single_report";
@@ -342,7 +368,7 @@ export type VibecheckResponse =
   | {
       mode: "compare";
       compare: CompareResult;
-      sourceLabel: "Uses Google Places and available review signals. Rankings adjust to the visit goal.";
+      sourceLabel: string;
     }
   | {
       mode: "recommendations";
@@ -359,10 +385,15 @@ export type VibecheckResponse =
       recoveryMessage: null;
     }
   | {
+      mode: "visit_plan";
+      plan: VisitPlanResult;
+      sourceLabel: string;
+    }
+  | {
       mode: "needs_location";
       detectedIntentLabel: string;
       locationCandidate: null;
       candidates: [];
-      sourceLabel: "Uses Google Places and available review signals. Rankings adjust to the visit goal.";
+      sourceLabel: string;
       recoveryMessage: string;
     };

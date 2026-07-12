@@ -1,8 +1,8 @@
 import type { VibeReport as VibeReportModel } from "@/lib/types/vibecheck";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { singlePlaceGeographyLines } from "@/lib/format/geographyUi";
-import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 import { signalGapRationaleHeading, signalGapScoreCaption, signalGapScoreLabel } from "@/lib/format/signalGapUi";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import { ReviewEvidencePanel } from "@/components/ReviewEvidencePanel";
 import { VibeReportDecisionMap } from "@/components/VibeReportDecisionMap";
 import { ScoreCard } from "@/components/ScoreCard";
@@ -138,12 +138,12 @@ export function VibeReport({ report }: VibeReportProps) {
       <section className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
         <div className="rounded-lg bg-[#faf9f7] px-3 py-3 ring-1 ring-stone-200/40 sm:px-3.5 sm:py-3.5">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">Intent fit</p>
-          <p className="mt-0.5 text-2xl font-semibold tabular-nums text-stone-950">{score.intentFitScore}</p>
+          <p className="mt-0.5 text-2xl font-semibold tabular-nums text-stone-950">{formatFitScoreTen(score.intentFitScore)}</p>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">{score.intentFitVerdict}</p>
         </div>
         <div className="rounded-lg bg-[#faf9f7] px-3 py-3 ring-1 ring-stone-200/40 sm:px-3.5 sm:py-3.5">
           <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400">{gapLabel}</p>
-          <p className="mt-0.5 text-2xl font-semibold tabular-nums text-stone-950">{score.vibeGapScore}</p>
+          <p className="mt-0.5 text-2xl font-semibold tabular-nums text-stone-950">{formatFitScoreTen(score.vibeGapScore)}</p>
           <p className="mt-1 text-xs leading-relaxed text-stone-600">{score.verdict}</p>
           <p className="mt-1.5 text-[10px] leading-snug text-stone-500">{gapCaption}</p>
         </div>
@@ -242,8 +242,6 @@ export function VibeReport({ report }: VibeReportProps) {
           </details>
         </div>
       </details>
-
-      <p className="text-[9px] leading-snug text-stone-400">{PRODUCT_HONESTY_FULL}</p>
     </article>
   );
 }

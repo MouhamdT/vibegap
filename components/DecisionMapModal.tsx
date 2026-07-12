@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
 import { loadGoogleMapsScript } from "@/lib/maps/loadGoogleMapsScript";
 import { computeLandmarkSearchContext, landmarkFetchKey } from "@/lib/maps/computeLandmarkSearchContext";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import { getDistanceMeters } from "@/lib/geo/distance";
 import type { MapLandmarkPlace } from "@/lib/maps/mapLandmarkTypes";
 import type { DecisionMapPin } from "@/lib/maps/decisionMapModel";
@@ -17,7 +18,7 @@ export type DecisionMapModalProps = {
   pins: DecisionMapPin[];
   title: string;
   subtitle: string;
-  mapMode: "recommendation" | "single" | "compare";
+  mapMode: "recommendation" | "single" | "compare" | "plan";
   onSelectVenueId?: (venuePlaceId: string) => void;
   footerPrimaryLine?: string | null;
 };
@@ -70,6 +71,17 @@ function styleMarkerPill(pill: HTMLElement, pin: DecisionMapPin, mapMode: MapMod
   pill.style.border = border;
   pill.style.borderRadius = isAnchor ? "10px" : "999px";
 
+  if (mapMode === "plan" && !isAnchor) {
+    // Plan stops read as route order: always dark numbered pins.
+    pill.style.minWidth = "30px";
+    pill.style.height = "30px";
+    pill.style.background = "#1c1917";
+    pill.style.color = "#fafaf9";
+    pill.style.border = "2px solid #fafaf9";
+    pill.textContent = typeof pin.rank === "number" ? String(pin.rank) : "•";
+    return;
+  }
+
   if (isAnchor) {
     pill.textContent = "◎";
   } else if (isCompare) {
@@ -97,7 +109,7 @@ function recommendationCandidatePopupHtml(pin: DecisionMapPin): string {
   const dec = pin.decisionLabel ? escapeHtml(pin.decisionLabel) : "—";
   const fit =
     typeof pin.fitScore === "number" && Number.isFinite(pin.fitScore)
-      ? escapeHtml(`Fit ${Math.round(pin.fitScore)}`)
+      ? escapeHtml(formatFitScoreTen(pin.fitScore))
       : "";
   const decisionFit = fit ? `<span style="font-weight:700">${dec}</span> · ${fit}` : `<span style="font-weight:700">${dec}</span>`;
 
@@ -151,7 +163,7 @@ function comparePlacePopupHtml(pin: DecisionMapPin): string {
   const dec = pin.decisionLabel ? escapeHtml(pin.decisionLabel) : "—";
   const fit =
     typeof pin.fitScore === "number" && Number.isFinite(pin.fitScore)
-      ? escapeHtml(`Fit ${Math.round(pin.fitScore)}`)
+      ? escapeHtml(formatFitScoreTen(pin.fitScore))
       : "";
   const line2 = fit ? `<span style="font-weight:700">${dec}</span> · ${fit}` : `<span style="font-weight:700">${dec}</span>`;
   const riskRaw = pin.mainRisk?.trim();
@@ -165,10 +177,31 @@ function comparePlacePopupHtml(pin: DecisionMapPin): string {
 </div>`;
 }
 
+function planStopPopupHtml(pin: DecisionMapPin): string {
+  const stop = typeof pin.rank === "number" ? `Stop ${pin.rank}` : "Stop";
+  const dec = pin.decisionLabel ? escapeHtml(pin.decisionLabel) : "—";
+  const fit =
+    typeof pin.fitScore === "number" && Number.isFinite(pin.fitScore)
+      ? escapeHtml(formatFitScoreTen(pin.fitScore))
+      : "";
+  const line2 = fit ? `<span style="font-weight:700">${dec}</span> · ${fit}` : `<span style="font-weight:700">${dec}</span>`;
+  const riskRaw = pin.mainRisk?.trim();
+  const riskBlock = riskRaw
+    ? `<div style="margin-top:5px;font-size:11px;color:#57534e;line-height:1.35">Risk: ${escapeHtml(riskRaw)}</div>`
+    : "";
+  return `<div style="max-width:280px;font:12px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;color:#292524;padding:2px 4px 2px 0">
+  <div style="font-size:10px;font-weight:600;color:#78716c;letter-spacing:0.06em;text-transform:uppercase">${escapeHtml(stop)}</div>
+  <div style="margin-top:3px;font-weight:700;letter-spacing:-0.01em">${escapeHtml(pin.name)}</div>
+  <div style="margin-top:6px;font-size:11px;color:#444;line-height:1.35">${line2}</div>
+  ${riskBlock}
+</div>`;
+}
+
 function popupHtmlForPin(pin: DecisionMapPin, mapMode: MapMode): string {
   if (pin.kind === "anchor") return anchorPopupHtml(pin);
   if (mapMode === "single") return singlePlacePopupHtml(pin);
   if (mapMode === "compare") return comparePlacePopupHtml(pin);
+  if (mapMode === "plan") return planStopPopupHtml(pin);
   return recommendationCandidatePopupHtml(pin);
 }
 
@@ -259,6 +292,7 @@ type MapsModule = {
     setZoom: (z: number) => void;
   };
   LatLngBounds: new () => { extend: (p: { lat: number; lng: number }) => void };
+  Polyline?: new (opts: Record<string, unknown>) => { setMap: (m: unknown | null) => void };
   InfoWindow: new (opts?: Record<string, unknown>) => {
     setContent: (html: string) => void;
     open: (opts: { map: unknown; anchor?: unknown }) => void;
@@ -394,7 +428,6 @@ export function DecisionMapModal({
     if (!open) {
       runtimeRef.current = null;
       disposeLandmarkMarkers(landmarkHandlesRef);
-      setLandmarkHint(null);
       landmarkCacheRef.current = null;
       return;
     }
@@ -475,6 +508,22 @@ export function DecisionMapModal({
           markers.set(pin.id, { id: pin.id, marker, pill });
         }
 
+        if (mapModeRef.current === "plan" && typeof maps.Polyline === "function") {
+          const routePins = pinsSnapshot
+            .filter((p) => p.kind === "candidate" && typeof p.rank === "number")
+            .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+          if (routePins.length >= 2) {
+            const line = new maps.Polyline({
+              map,
+              path: routePins.map((p) => ({ lat: p.lat, lng: p.lng })),
+              strokeColor: "#1c1917",
+              strokeOpacity: 0.55,
+              strokeWeight: 2.5,
+            });
+            cleanups.push(() => line.setMap(null));
+          }
+        }
+
         runtimeRef.current = { map, infoWindow, markers, AdvancedMarkerCtor: AdvancedMarkerElement };
         syncMarkerPills(runtimeRef.current, pinsRef.current, mapModeRef.current);
 
@@ -524,14 +573,12 @@ export function DecisionMapModal({
   useEffect(() => {
     if (!open) {
       disposeLandmarkMarkers(landmarkHandlesRef);
-      setLandmarkHint(null);
       landmarkCacheRef.current = null;
       return;
     }
 
     if (!showLandmarks) {
       disposeLandmarkMarkers(landmarkHandlesRef);
-      setLandmarkHint(null);
       return;
     }
 
@@ -664,7 +711,10 @@ export function DecisionMapModal({
                   type="checkbox"
                   className="h-3.5 w-3.5 rounded border-stone-300 text-stone-800"
                   checked={showLandmarks}
-                  onChange={(e) => setShowLandmarks(e.target.checked)}
+                  onChange={(e) => {
+                    setShowLandmarks(e.target.checked);
+                    if (!e.target.checked) setLandmarkHint(null);
+                  }}
                   aria-label="Show nearby landmarks on the map for context"
                 />
                 <span title="Map context: nearby landmarks for orientation only">Landmarks</span>

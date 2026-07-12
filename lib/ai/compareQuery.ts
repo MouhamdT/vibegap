@@ -125,7 +125,9 @@ export function parseCompareQuery(raw: string): ParsedCompareQuery | null {
 
   if (!pair) return null;
 
-  let { placeA, placeB, goal } = extractGoalFromPair(pair.left, pair.right);
+  const extracted = extractGoalFromPair(pair.left, pair.right);
+  const { placeA, placeB } = extracted;
+  let goal = extracted.goal;
   if (!goal.trim()) {
     const tailGoal = extractTrailingGoalFromFullCompareQuery(raw.trim());
     if (tailGoal) goal = tailGoal;
@@ -133,8 +135,8 @@ export function parseCompareQuery(raw: string): ParsedCompareQuery | null {
 
   const segA = stripExplicitInCitySuffixFromPlaceQuery(placeA.trim());
   const segB = stripExplicitInCitySuffixFromPlaceQuery(placeB.trim());
-  let placeAClean = segA.venue;
-  let placeBClean = segB.venue;
+  const placeAClean = segA.venue;
+  const placeBClean = segB.venue;
   if (!compareContextCity) {
     if (segA.cityDisplay && !segB.cityDisplay) compareContextCity = segA.cityDisplay;
     else if (segB.cityDisplay && !segA.cityDisplay) compareContextCity = segB.cityDisplay;

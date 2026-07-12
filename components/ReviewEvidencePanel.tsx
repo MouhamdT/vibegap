@@ -2,14 +2,23 @@
 
 import { useState } from "react";
 import { buildReviewEvidence } from "@/lib/ai/reviewEvidence";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import { REVIEW_EVIDENCE_HONESTY } from "@/lib/copy/productHonesty";
 import type { PlaceData } from "@/lib/types/vibecheck";
+
+type ScoreBreakdownRow = {
+  label: string;
+  score: number;
+  explanation: string;
+};
 
 type ReviewEvidencePanelProps = {
   place: PlaceData;
   variant?: "full" | "compact";
   /** When false, omit the footer honesty line (parent can show a single line instead). Default true. */
   showDataHonesty?: boolean;
+  /** Optional score breakdown rows rendered inside the same disclosure. */
+  scoreBreakdown?: ScoreBreakdownRow[];
 };
 
 const HONESTY = REVIEW_EVIDENCE_HONESTY;
@@ -25,10 +34,14 @@ export function ReviewEvidencePanel({
   place,
   variant = "full",
   showDataHonesty = true,
+  scoreBreakdown,
 }: ReviewEvidencePanelProps) {
   const evidence = buildReviewEvidence(place);
   const compact = variant === "compact";
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const breakdownRows = (scoreBreakdown ?? []).filter(
+    (row) => Number.isFinite(row.score) && row.label.trim().length > 0,
+  );
 
   const themeRows = compact ? evidence.themes.slice(0, 4) : evidence.themes.slice(0, 8);
   const helpedRows = compact ? evidence.helped.slice(0, 2) : evidence.helped.slice(0, 4);
@@ -51,8 +64,8 @@ export function ReviewEvidencePanel({
         className={`cursor-pointer list-none ${pad} text-[10px] font-medium uppercase tracking-[0.12em] text-stone-500 outline-none marker:content-none [&::-webkit-details-marker]:hidden`}
       >
         <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-          <span>Review evidence</span>
-          <span className="font-normal normal-case tracking-normal text-stone-400">Why reviewers say this</span>
+          <span>Evidence</span>
+          <span className="font-normal normal-case tracking-normal text-stone-400">What reviews say</span>
         </span>
       </summary>
 
@@ -142,6 +155,23 @@ export function ReviewEvidencePanel({
           </div>
         ) : evidence.showSnippetFallbackNote ? (
           <p className={`${textXs} leading-relaxed text-stone-600`}>{SNIPPET_UNAVAILABLE}</p>
+        ) : null}
+
+        {breakdownRows.length > 0 ? (
+          <div>
+            <p className={`${text2xs} font-medium text-stone-500`}>Score breakdown</p>
+            <div className="mt-1.5 space-y-0 divide-y divide-stone-100">
+              {breakdownRows.map((row) => (
+                <div key={row.label} className="flex flex-col gap-0.5 py-1.5 first:pt-0">
+                  <div className={`flex items-center justify-between gap-2 ${text2xs} text-stone-600`}>
+                    <span className="min-w-0 truncate font-medium text-stone-800">{row.label}</span>
+                    <span className="shrink-0 tabular-nums font-semibold text-stone-900">{formatFitScoreTen(row.score)}</span>
+                  </div>
+                  <p className={`${text2xs} leading-relaxed text-stone-500`}>{row.explanation}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : null}
 
         {showDataHonesty ? <p className={`${text2xs} leading-snug text-stone-400`}>{HONESTY}</p> : null}

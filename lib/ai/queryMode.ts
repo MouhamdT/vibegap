@@ -309,24 +309,24 @@ export function inferRecommendationIntentFromGoalSpan(goalLeft: string): Detecte
     };
   }
 
-  if (/\bbrunch\b/.test(query)) {
-    return { kind: "budget_eats", label: "Brunch", confidence: "medium", matchedSignals: ["brunch"] };
+  if (/\b(brunch|breakfast)\b/.test(query)) {
+    return { kind: "meal_style", label: "Brunch", confidence: "medium", matchedSignals: ["brunch"] };
   }
 
-  if (/\b(breakfast|lunch|dinner|supper)\b/.test(query)) {
-    return { kind: "budget_eats", label: "Dining", confidence: "medium", matchedSignals: ["meal"] };
+  if (/\b(lunch|dinner|supper)\b/.test(query)) {
+    return { kind: "meal_style", label: "Dining", confidence: "medium", matchedSignals: ["meal"] };
   }
 
   if (/\b(coffee|espresso|cafe|café)\b/.test(query)) {
-    return { kind: "budget_eats", label: "Coffee", confidence: "medium", matchedSignals: ["coffee"] };
+    return { kind: "meal_style", label: "Coffee", confidence: "medium", matchedSignals: ["coffee"] };
   }
 
   if (/\b(restaurant|food|eats|dining|drinks|dessert)\b/.test(query)) {
-    return { kind: "budget_eats", label: "Food or drinks", confidence: "medium", matchedSignals: ["food"] };
+    return { kind: "meal_style", label: "Food or drinks", confidence: "medium", matchedSignals: ["food"] };
   }
 
   if (/\b(pizza|burger|sushi|tacos|noodles|ramen|pho|bbq)\b/.test(query)) {
-    return { kind: "budget_eats", label: "Food or drinks", confidence: "medium", matchedSignals: ["meal"] };
+    return { kind: "meal_style", label: "Food or drinks", confidence: "medium", matchedSignals: ["meal"] };
   }
 
   return {

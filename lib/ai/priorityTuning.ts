@@ -11,6 +11,7 @@ import type {
 } from "@/lib/types/vibecheck";
 
 import { buildGoalComparePostTuneVerdict } from "@/lib/ai/compareVerdictCopy";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 
 export const PRIORITY_KEYS = [
   "quietCrowd",
@@ -20,8 +21,8 @@ export const PRIORITY_KEYS = [
   "reviewConfidence",
 ] as const;
 
-/** Sliders shown in Tune ranking UI; atmosphere stays at goal defaults internally. */
-export const TUNABLE_PRIORITY_KEYS = ["quietCrowd", "lowWait", "budgetValue", "reviewConfidence"] as const;
+/** Sliders shown in Tune ranking UI; other weights stay at goal defaults internally. */
+export const TUNABLE_PRIORITY_KEYS = ["quietCrowd", "lowWait"] as const;
 
 export type TunablePriorityKey = (typeof TUNABLE_PRIORITY_KEYS)[number];
 
@@ -40,16 +41,12 @@ export const PRIORITY_LABELS: Record<PriorityKey, string> = {
 export const TUNABLE_SLIDER_LABELS: Record<TunablePriorityKey, string> = {
   quietCrowd: "Quiet",
   lowWait: "Low wait",
-  budgetValue: "Value",
-  reviewConfidence: "Confidence",
 };
 
 /** Short tooltips for slider labels (native `title`). */
 export const TUNABLE_SLIDER_HINTS: Record<TunablePriorityKey, string> = {
   quietCrowd: "Low crowd / low noise",
   lowWait: "Shorter waits, less queue friction",
-  budgetValue: "Budget / price fit",
-  reviewConfidence: "Stronger review signal depth",
 };
 
 function resolveCompareTuningFamilyFromIntentKind(intent: DetectedIntent): CompareTuningFamily | null {
@@ -71,6 +68,7 @@ function resolveCompareTuningFamilyFromIntentKind(intent: DetectedIntent): Compa
     case "party_nightlife":
       return "occasion";
     case "family":
+    case "meal_style":
       return "food";
     default:
       return null;
@@ -117,71 +115,50 @@ export function getCompareTuningSliderCopy(family: CompareTuningFamily): {
       labels: {
         quietCrowd: "Quiet",
         lowWait: "Seating / laptop fit",
-        budgetValue: "Low crowd",
-        reviewConfidence: "Confidence",
       },
       hints: {
-        quietCrowd: "Emphasizes quieter, less crowded reads from reviews.",
-        lowWait:
-          "Emphasizes laptop-friendly and access-oriented signals (mapped onto the wait/reservation score bucket in the model).",
-        budgetValue: "Emphasizes busier vs calmer room energy in reviews.",
-        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+        quietCrowd: "Weighs quieter, less crowded reads from reviews.",
+        lowWait: "Weighs laptop-friendly and easy-access signals.",
       },
     },
     low_wait: {
       labels: {
         quietCrowd: "Reservation friction",
         lowWait: "Low wait",
-        budgetValue: "Timing flexibility",
-        reviewConfidence: "Confidence",
       },
       hints: {
-        quietCrowd: "Emphasizes booking pressure and crowding cues tied to access friction.",
-        lowWait: "Emphasizes waits, lines, and turn-time signals from reviews.",
-        budgetValue: "Emphasizes how flexible timing feels from review language.",
-        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+        quietCrowd: "Weighs booking pressure and crowding cues.",
+        lowWait: "Weighs waits, lines, and turn-time signals from reviews.",
       },
     },
     budget: {
       labels: {
         quietCrowd: "Group practicality",
         lowWait: "Price risk",
-        budgetValue: "Value",
-        reviewConfidence: "Confidence",
       },
       hints: {
-        quietCrowd: "Emphasizes room-for-groups and practicality cues in reviews.",
-        lowWait: "Emphasizes price and bill-shock risk signals from reviews.",
-        budgetValue: "Emphasizes value-for-money and deal language in reviews.",
-        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+        quietCrowd: "Weighs room-for-groups and practicality cues in reviews.",
+        lowWait: "Weighs price and bill-shock risk signals from reviews.",
       },
     },
     occasion: {
       labels: {
         quietCrowd: "Atmosphere",
         lowWait: "Reservation risk",
-        budgetValue: "Occasion fit",
-        reviewConfidence: "Confidence",
       },
       hints: {
-        quietCrowd: "Emphasizes ambience and special-occasion energy in reviews.",
-        lowWait: "Emphasizes reservation pressure and wait risk for prime times.",
-        budgetValue: "Emphasizes how well the room reads for the occasion.",
-        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+        quietCrowd: "Weighs ambience and special-occasion energy in reviews.",
+        lowWait: "Weighs reservation pressure and wait risk for prime times.",
       },
     },
     food: {
       labels: {
         quietCrowd: "Food fit",
         lowWait: "Brunch / cafe relevance",
-        budgetValue: "Value",
-        reviewConfidence: "Confidence",
       },
       hints: {
-        quietCrowd: "Emphasizes food quality and menu fit signals in reviews.",
-        lowWait: "Emphasizes meal-type fit (brunch, cafe, daytime dining) in reviews.",
-        budgetValue: "Emphasizes value-for-money and portion cues in reviews.",
-        reviewConfidence: "Emphasizes depth and consistency of review signals.",
+        quietCrowd: "Weighs food quality and menu fit signals in reviews.",
+        lowWait: "Weighs meal-type fit (brunch, cafe, daytime dining) in reviews.",
       },
     },
   };
@@ -290,6 +267,14 @@ export function getDefaultPriorityWeights(intent: DetectedIntent): PriorityWeigh
         budgetValue: 88,
         atmosphere: 50,
         reviewConfidence: 60,
+      };
+    case "meal_style":
+      return {
+        quietCrowd: 32,
+        lowWait: 60,
+        budgetValue: 55,
+        atmosphere: 55,
+        reviewConfidence: 68,
       };
     case "luxury":
     case "date_night":
@@ -474,8 +459,8 @@ function buildFactorRows(
   return [
     {
       factor: "Goal fit",
-      placeAValue: String(a.fitScore),
-      placeBValue: String(b.fitScore),
+      placeAValue: formatFitScoreTen(a.fitScore),
+      placeBValue: formatFitScoreTen(b.fitScore),
       advantage: advantageName(compareNumeric(a.fitScore, b.fitScore, true), placeAName, placeBName),
     },
     {

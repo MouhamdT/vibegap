@@ -8,7 +8,6 @@ import {
   type PriorityWeights,
   type TunablePriorityKey,
 } from "@/lib/ai/priorityTuning";
-import { PRODUCT_HONESTY_COMPARE, PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 
 function mergeAtmosphere(next: PriorityWeights, defaultWeights: PriorityWeights): PriorityWeights {
   return { ...next, atmosphere: defaultWeights.atmosphere };
@@ -56,8 +55,8 @@ export function PriorityTuningPanel({
   const dialogTitle = actionLabel;
   const defaultIntro =
     variant === "compare"
-      ? "Changing sliders updates the comparison locally. It does not fetch new data."
-      : "Changing sliders updates the current results locally. It does not fetch new data.";
+      ? "Updates this comparison only — doesn't search again."
+      : "Updates this list only — doesn't search again.";
   const introLine = panelIntroLine ?? defaultIntro;
 
   useEffect(() => {
@@ -71,8 +70,13 @@ export function PriorityTuningPanel({
     return () => document.removeEventListener("mousedown", onDocMouseDown);
   }, [open]);
 
-  const handleSliderChange = (key: TunablePriorityKey, value: number) => {
-    onWeightsChange(mergeAtmosphere({ ...weights, [key]: value }, defaultWeights));
+  /** Sliders display 1–10; internal weights stay on the 0–100 scale. */
+  const displayValue = (key: TunablePriorityKey): number =>
+    Math.min(10, Math.max(1, Math.round(weights[key] / 10)));
+
+  const handleSliderChange = (key: TunablePriorityKey, tenScaleValue: number) => {
+    const internal = Math.min(100, Math.max(10, tenScaleValue * 10));
+    onWeightsChange(mergeAtmosphere({ ...weights, [key]: internal }, defaultWeights));
   };
 
   const labelFor = (key: TunablePriorityKey) => sliderLabels?.[key] ?? TUNABLE_SLIDER_LABELS[key];
@@ -117,9 +121,6 @@ export function PriorityTuningPanel({
             </div>
 
             <p className="mt-2 text-[10px] leading-relaxed text-stone-500">{introLine}</p>
-            <p className="mt-1 text-[10px] leading-relaxed text-stone-500">
-              {variant === "compare" ? PRODUCT_HONESTY_COMPARE : PRODUCT_HONESTY_FULL}
-            </p>
 
             <div className="mt-2.5 space-y-2">
               {TUNABLE_PRIORITY_KEYS.map((key) => (
@@ -132,15 +133,15 @@ export function PriorityTuningPanel({
                     >
                       {labelFor(key)}
                     </label>
-                    <span className="shrink-0 tabular-nums text-stone-500">{weights[key]}</span>
+                    <span className="shrink-0 tabular-nums text-stone-500">{displayValue(key)}</span>
                   </div>
                   <input
                     id={`${panelId}-${key}`}
                     type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={weights[key]}
+                    min={1}
+                    max={10}
+                    step={1}
+                    value={displayValue(key)}
                     onChange={(e) => handleSliderChange(key, Number(e.target.value))}
                     className="vibegap-tune-range h-1.5 w-full min-w-0 cursor-pointer accent-stone-700"
                     title={hintFor(key)}

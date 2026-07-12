@@ -121,6 +121,26 @@ function rankForIntent(place: PlaceData, intent: DetectedIntent): {
         : "Weekend volume swings";
     bestFor = "Late-morning plans with flexible timing";
     avoidIf = "Rigid no-wait brunch expectations on peak weekends";
+  } else if (intentKind === "meal_style") {
+    // Dining / food-forward meal goals (brunch and coffee route through the brunch-like branch above).
+    signals.waitHeavy = riskFromBlob(blob, /\bwait|line|queue|reservation\b/i);
+    signals.value = riskFromBlob(blob, /\bvalue|worth|good price|generous\b/i);
+    signals.pricey = riskFromBlob(blob, /\boverpriced|expensive|pricey|not worth\b/i);
+    const foodQuality = riskFromBlob(blob, /\bdelicious|fresh|tasty|flavor|flavour|portion|menu|dish|chef|homemade\b/i);
+    const mealGoogleType =
+      place.googleTypes?.some((x) => /restaurant|meal_|food/i.test(x)) ?? false;
+    if (mealGoogleType) score += 8;
+    if (foodQuality) score += 12;
+    if (signals.value) score += 6;
+    if (signals.pricey) score -= 10;
+    if (signals.waitHeavy) score -= 10;
+    mainRisk = signals.waitHeavy
+      ? "Waits or reservation pressure at meal peaks"
+      : signals.pricey
+        ? "Bill may run higher than the room suggests"
+        : "Kitchen consistency at busy services";
+    bestFor = "A solid meal without overthinking it";
+    avoidIf = "Tight schedules at peak meal hours";
   } else if (intentKind === "study_work" || intentKind === "quiet_calm") {
     const studyTypeBoost = isStudyPlaceType(place);
     signals.quiet = riskFromBlob(blob, /\bquiet|calm|study|laptop|wifi|wi-fi|outlet|bookshop|workspace\b/i);
@@ -218,24 +238,24 @@ function decisionToneLine(label: RankedCandidate["decision"]["label"], placeId: 
   const s = seedFromId(placeId) % 3;
   if (label === "GO") {
     const lines = [
-      "Strong match for this plan if the listed risk is acceptable.",
-      "Best current match on fit, review coverage, and signal confidence in this shortlist.",
-      "Worth choosing when you can accept the main tradeoff and time the visit sensibly.",
+      "Good fit if the main risk works for you.",
+      "Best current match in this list.",
+      "Solid pick — just time the visit sensibly.",
     ];
     return lines[s] ?? lines[0]!;
   }
   if (label === "MAYBE") {
     const lines = [
-      "Possible fit — check the tradeoff before you commit.",
-      "Good enough for the plan if timing or seating is flexible.",
-      "Worth considering when you can absorb a bit of execution risk.",
+      "Possible fit — check the tradeoff first.",
+      "Works if your timing is flexible.",
+      "Worth a look if you can take some risk.",
     ];
     return lines[s] ?? lines[0]!;
   }
   const lines = [
-    "Poor fit for this goal based on available review signals.",
-    "Main review themes conflict with the plan — only choose if the goal can flex.",
-    "Choose only if you are deliberately trading the stated goal for something else.",
+    "Reviews don't back this plan here.",
+    "Review themes clash with your goal.",
+    "Only pick this if the goal can flex.",
   ];
   return lines[s] ?? lines[0]!;
 }
@@ -344,6 +364,20 @@ function buildDecisionAwareReason(
     return `Repeated line or crowding themes — risky for a strict no-wait plan.`;
   }
 
+  if (intentKind === "meal_style") {
+    if (label === "GO") {
+      return place.reviewCount > 400
+        ? `Strong food and service cues with deep review coverage (${place.reviewCount.toLocaleString()}).`
+        : `Food and service cues read well for this meal.`;
+    }
+    if (label === "MAYBE") {
+      return v % 2 === 0
+        ? `Decent meal fit, but waits or value look less certain than picks above.`
+        : `Workable for this meal if your timing is flexible.`;
+    }
+    return `Review themes don't back this meal plan — better options in this list.`;
+  }
+
   if (intentKind === "venue_lookup") {
     const mealish = /\b(brunch|lunch|dinner|coffee|meal|café|cafe)\b/i.test(intent.label);
     if (mealish) {
@@ -391,6 +425,11 @@ function pickScoreDriver(intent: DetectedIntent, signals: CandidateSignals, plac
     if (signals.value) return "Better value fit";
     return h % 2 === 0 ? "Group celebration practicality" : "Reservation timing drag";
   }
+  if (k === "meal_style") {
+    if (signals.waitHeavy) return "Wait pressure at meal peaks";
+    if (signals.pricey) return "Price vs. value read";
+    return h % 2 === 0 ? "Food quality signal" : "Meal-fit review depth";
+  }
   if (k === "luxury" || k === "date_night") {
     if (signals.cozy || signals.upscale) return h % 2 === 0 ? "Strong occasion fit" : "Premium atmosphere signal";
     if (signals.rushed) return "Noise/pacing drag";
@@ -425,19 +464,19 @@ function buildRankReasonDetail(
 
   if (index === 0) {
     return deltaNext > 0
-      ? `Strongest driver: ${candidate.scoreDriver}; leads the shortlist by ${deltaNext} fit points on the current model.`
-      : `Strongest driver: ${candidate.scoreDriver}; edges the field on tie-breakers in this run.`;
+      ? `Leads this list on ${candidate.scoreDriver.toLowerCase()}.`
+      : `Edges out the field on close tie-breakers.`;
   }
 
   const v = seedFromId(candidate.place.id) % 3;
   const vsPrev =
     deltaPrev > 0
       ? v === 0
-        ? `Fits below #${index} mainly on ${candidate.scoreDriver.toLowerCase()} versus ${prev?.scoreDriver.toLowerCase() ?? "the leader"}.`
+        ? `Trails #${index} on ${candidate.scoreDriver.toLowerCase()}.`
         : v === 1
-          ? `Noise/crowding or wait cues read heavier than the pick above, depending on goal.`
-          : `Weaker overall fit than #${index} with a different risk mix in reviews.`
-      : `Clusters near #${index} on score — differentiate on ${candidate.mainRisk.toLowerCase()} vs. peers.`;
+          ? `Slightly more noise or wait risk than the pick above.`
+          : `A bit weaker fit than #${index}, with a different risk mix.`
+      : `Nearly tied with #${index} — the difference is ${candidate.mainRisk.toLowerCase()}.`;
 
   return vsPrev;
 }
@@ -539,6 +578,41 @@ function scoreBreakdownFor(
         label: "Signal confidence",
         score: confidenceScore,
         explanation: "Higher when Google review signals are available; rankings use clear rules and your visit goal.",
+      },
+    ];
+  }
+
+  if (k === "meal_style") {
+    return [
+      {
+        label: "Meal fit",
+        score: clamp(
+          64 +
+            (analysis.signals.brunchMorning ? 12 : 0) +
+            (analysis.signals.value ? 8 : 0) -
+            (analysis.signals.dinnerHeavy ? 18 : 0),
+          0,
+          100,
+        ),
+        explanation: "How well the venue type and review themes match this kind of meal.",
+      },
+      {
+        label: "Wait / reservation risk",
+        score: clamp(100 - (analysis.signals.waitHeavy ? 54 : 26), 0, 100),
+        explanation: analysis.signals.waitHeavy
+          ? "Lines or reservation pressure show up in review themes."
+          : "Wait pressure looks moderate in this snapshot.",
+      },
+      {
+        label: "Value fit",
+        score: clamp(80 - place.priceLevel * 10 + (analysis.signals.value ? 8 : 0) - (analysis.signals.pricey ? 16 : 0), 0, 100),
+        explanation: "Price level plus value-related review themes.",
+      },
+      { label: "Review strength", score: reviewStrength, explanation: revExpl },
+      {
+        label: "Signal confidence",
+        score: confidenceScore,
+        explanation: "Higher when Google review text is available.",
       },
     ];
   }

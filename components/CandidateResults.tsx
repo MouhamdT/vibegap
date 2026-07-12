@@ -3,9 +3,8 @@
 import { useMemo, useState } from "react";
 import { PriorityTuningPanel } from "@/components/PriorityTuningPanel";
 import { RecommendationDrillDownPanel } from "@/components/RecommendationDrillDownPanel";
-import { RecommendationInsights } from "@/components/RecommendationInsights";
 import { RecommendationRankedShortlist } from "@/components/RecommendationRankedShortlist";
-import { buildRecommendationInsights } from "@/lib/ai/recommendationInsights";
+import { applyFollowUpRefinement } from "@/lib/ai/followUpRefinement";
 import {
   applyPriorityWeightsToCandidates,
   getDefaultPriorityWeights,
@@ -48,22 +47,23 @@ function CandidateResultsBody({
   const [userAdjusted, setUserAdjusted] = useState(false);
   const [recStyle, setRecStyle] = useState<RecommendationStyleMode>("balanced");
   const [visibleCount, setVisibleCount] = useState(6);
+  const [refinement, setRefinement] = useState<string | null>(null);
 
   const rankedCandidates = useMemo(() => {
     const base = weightsEqual(weights, defaultWeights)
       ? candidates
       : applyPriorityWeightsToCandidates(candidates, weights);
     const styled = applyRecommendationStyleRescore(base, recStyle);
-    const withGeo = assignGeographySignalLines(styled, geography?.nearAnchorDisplayName ?? null);
+    const refined = refinement ? applyFollowUpRefinement(styled, refinement) : styled;
+    const withGeo = assignGeographySignalLines(refined, geography?.nearAnchorDisplayName ?? null);
     return assignShortlistRoles(withGeo, detectedIntent, geography, recStyle);
-  }, [candidates, weights, defaultWeights, recStyle, geography, detectedIntent]);
+  }, [candidates, weights, defaultWeights, recStyle, refinement, geography, detectedIntent]);
 
   const displayedCandidates = useMemo(
     () => rankedCandidates.slice(0, Math.min(visibleCount, rankedCandidates.length)),
     [rankedCandidates, visibleCount],
   );
 
-  const insights = buildRecommendationInsights(rankedCandidates, detectedIntent, locationCandidate);
   const isDesktop = useMinWidthLg();
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(() => candidates[0]?.place.id ?? null);
 
@@ -86,15 +86,20 @@ function CandidateResultsBody({
   const handleReset = () => {
     setWeights(defaultWeights);
     setUserAdjusted(false);
+    setRefinement(null);
     setSelectedPlaceId(candidates[0]?.place.id ?? null);
   };
 
-  const styleBlurb =
-    recStyle === "reliable"
-      ? "Favors established venues with stronger review coverage and lower risk."
-      : recStyle === "discovery"
-        ? "Allows venues you might not pick first when they still match the plan well."
-        : "Balances goal fit, review confidence, and practical tradeoffs.";
+  const handleSuggestRefinement = (nextRefinement: string) => {
+    const base = weightsEqual(weights, defaultWeights)
+      ? candidates
+      : applyPriorityWeightsToCandidates(candidates, weights);
+    const styled = applyRecommendationStyleRescore(base, recStyle);
+    const refined = applyFollowUpRefinement(styled, nextRefinement);
+    setRefinement(nextRefinement);
+    const next = refined.find((c) => c.place.id !== activeSelectedId) ?? refined[0];
+    setSelectedPlaceId(next?.place.id ?? null);
+  };
 
   const selectedCandidate = rankedCandidates.find((c) => c.place.id === activeSelectedId) ?? null;
   const selectedRank = selectedCandidate ? rankedCandidates.indexOf(selectedCandidate) + 1 : 0;
@@ -138,8 +143,6 @@ function CandidateResultsBody({
             {anchorNote ? (
               <p className="max-w-2xl text-[11px] font-medium leading-relaxed text-stone-600">{anchorNote}</p>
             ) : null}
-            <p className="max-w-2xl text-[11px] leading-relaxed text-stone-500">{insights.confidenceNote}</p>
-            <p className="max-w-2xl text-[11px] leading-relaxed text-stone-600">{styleBlurb}</p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <span className="text-[10px] font-medium uppercase tracking-wide text-stone-400">Recommendation style</span>
               {(["reliable", "balanced", "discovery"] as const).map((mode) => (
@@ -151,7 +154,8 @@ function CandidateResultsBody({
                     const base = weightsEqual(weights, defaultWeights)
                       ? candidates
                       : applyPriorityWeightsToCandidates(candidates, weights);
-                    const next = applyRecommendationStyleRescore(base, mode);
+                    const styled = applyRecommendationStyleRescore(base, mode);
+                    const next = refinement ? applyFollowUpRefinement(styled, refinement) : styled;
                     setSelectedPlaceId(next[0]?.place.id ?? null);
                   }}
                   className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition ${
@@ -194,8 +198,6 @@ function CandidateResultsBody({
         </div>
       </header>
 
-      <RecommendationInsights insights={insights} />
-
       {rankedCandidates.length === 0 ? (
         <div className="rounded-lg border border-dashed border-stone-200/80 bg-[#faf9f7] px-4 py-8 text-left sm:px-6 sm:py-9">
           <p className="text-sm font-medium leading-relaxed text-stone-800">
@@ -223,6 +225,7 @@ function CandidateResultsBody({
               onSelectPlace={setSelectedPlaceId}
               desktopSplit={isDesktop}
               geography={geography}
+              onSuggestRefinement={handleSuggestRefinement}
             />
             {rankedCandidates.length > visibleCount ? (
               <button
@@ -245,6 +248,7 @@ function CandidateResultsBody({
                 rank={selectedRank}
                 variant="sidebar"
                 geography={geography}
+                onSuggestRefinement={handleSuggestRefinement}
               />
             </aside>
           ) : null}

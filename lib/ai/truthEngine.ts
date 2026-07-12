@@ -1,5 +1,6 @@
 import { buildSinglePlaceGeography } from "@/lib/geo/buildSinglePlaceGeography";
 import { classifyQueryMode, type QueryClassification } from "@/lib/ai/queryMode";
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import { PRODUCT_HONESTY_FULL } from "@/lib/copy/productHonesty";
 import { formatSearchQueryForDisplay } from "@/lib/formatSearchQueryDisplay";
 import { resolvePlaceForReport } from "@/lib/places/resolvePlaceForReport";
@@ -238,6 +239,7 @@ const INTENT_KEYWORDS: Record<UserIntentKind, readonly string[]> = {
     "dinner",
   ],
   budget_eats: ["cheap", "budget", "affordable", "inexpensive", "deal", "value", "vegan", "vegetarian"],
+  meal_style: ["brunch", "breakfast", "coffee", "espresso", "cafe", "café", "lunch", "dinner", "supper"],
   luxury: ["luxury", "splurge", "fancy", "special", "tasting", "celebration", "upscale"],
   quiet_calm: [
     "quiet",
@@ -426,12 +428,46 @@ export function detectIntentFromQuery(rawQuery: string): DetectedIntent {
     };
   }
 
+  const mealIntent = detectMealStyleIntent(query);
+  if (mealIntent) return mealIntent;
+
   return {
     kind: "venue_lookup",
     label: "Venue lookup (no specific goal detected)",
     confidence: "low",
     matchedSignals: [],
   };
+}
+
+/**
+ * Meal goals (brunch / coffee / dining) as first-class intents.
+ * Guarded so venue names containing meal words ("The Laundromat Cafe") stay venue lookups:
+ * the query must start with the meal word or read goal-like ("in", "near", "best", "place to").
+ */
+function detectMealStyleIntent(query: string): DetectedIntent | null {
+  const goalShaped =
+    /\b(in|near|around|for|best|good|top|place|spot|where)\b/.test(query);
+
+  const mealGroups: { re: RegExp; label: string; signal: string }[] = [
+    { re: /\b(brunch|breakfast)\b/, label: "Brunch", signal: "brunch" },
+    { re: /\b(coffee|espresso)\b/, label: "Coffee", signal: "coffee" },
+    { re: /\b(lunch|dinner|supper)\b/, label: "Dining", signal: "meal" },
+  ];
+
+  for (const group of mealGroups) {
+    const m = query.match(group.re);
+    if (!m) continue;
+    const startsWithMeal = query.startsWith(m[0]);
+    if (!startsWithMeal && !goalShaped) return null;
+    return {
+      kind: "meal_style",
+      label: group.label,
+      confidence: goalShaped ? "medium" : "low",
+      matchedSignals: [group.signal],
+    };
+  }
+
+  return null;
 }
 
 function collectHits(query: string, keywords: readonly string[]): string[] {
@@ -1219,7 +1255,7 @@ function computeIntentFitScore(
         bullets: agree
           ? [
               `Matched intent: ${intent.label.toLowerCase()} (${intent.matchedSignals.slice(0, 4).join(", ") || "query cues"}).`,
-              `The livelier goal signals on the cards and review snippets both skew energetic or wait-heavy — weak match for your goal. Laptop-friendly score (${laptopFriendlyScore}/100) backs that read.`,
+              `The livelier goal signals on the cards and review snippets both skew energetic or wait-heavy — weak match for your goal. Laptop-friendly score (${formatFitScoreTen(laptopFriendlyScore)}) backs that read.`,
               "The signal gap score stays low when the lines on the cards and reviews agree; Intent Fit is the main red flag for study-style plans.",
             ]
           : [
@@ -1249,7 +1285,7 @@ function computeIntentFitScore(
       bullets: [
         `Matched intent: ${intent.label.toLowerCase()}.`,
         laptopFriendlyScore < 48
-          ? `Laptop-friendly score (${laptopFriendlyScore}/100) looks weak for long sessions — pair that with review notes on noise, seating, and turnover.`
+          ? `Laptop-friendly score (${formatFitScoreTen(laptopFriendlyScore)}) looks weak for long sessions — pair that with review notes on noise, seating, and turnover.`
           : gRev
             ? "Available Google review themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work."
             : "Review themes include both energetic and calmer cues — treat this as a reminder to read the latest reviews before planning deep work.",
@@ -1749,18 +1785,18 @@ function buildRecommendation(
   let body: string;
   if (isStudyLike && lowIntent && lowVibeGap) {
     body = usesGoogleReviewSignals(place)
-      ? `${ratingLine} The lines on the cards and available Google review signals mostly agree this place is energetic and busy, so the signal gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh Google reviews alongside this read.`
-      : `${ratingLine} The lines on the cards and reviews mostly agree this place is energetic and busy, so the signal gap score (${vibeGapScore}/100) is not the main issue. The bigger issue is Intent Fit (${intentFitScore}/100): it is not a good match for quiet studying or deep work. Laptop-friendly scoring reflects the same noisy, high-energy cues. Still read fresh reviews alongside this read.`;
+      ? `${ratingLine} Cards and Google review signals agree this place is energetic and busy, so the signal gap (${formatFitScoreTen(vibeGapScore)}) is not the issue. The issue is intent fit (${formatFitScoreTen(intentFitScore)}): it is a weak match for quiet study or deep work. Still read fresh Google reviews alongside this.`
+      : `${ratingLine} Cards and reviews agree this place is energetic and busy, so the signal gap (${formatFitScoreTen(vibeGapScore)}) is not the issue. The issue is intent fit (${formatFitScoreTen(intentFitScore)}): it is a weak match for quiet study or deep work. Still read fresh reviews alongside this.`;
   } else {
     const planLine = `Practical fit: ${bestFor[0] ?? "a quick reconnaissance visit"}. Watch out if ${avoidIf[0]?.toLowerCase() ?? "the lines on the cards oversimplify the room"}.`;
     body =
       vibeGapScore <= GAP_LOW_MAX
         ? usesGoogleReviewSignals(place)
-          ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because goal signals on the cards and review themes line up in the available Google review signals.`
-          : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) stays low because goal signals on the cards and review themes line up in this snapshot.`
+          ? `${ratingLine} ${planLine} Signal gap (${formatFitScoreTen(vibeGapScore)}) stays low because goal signals and Google review themes line up.`
+          : `${ratingLine} ${planLine} Signal gap (${formatFitScoreTen(vibeGapScore)}) stays low because goal signals and review themes line up in this snapshot.`
         : vibeGapScore <= GAP_MED_MAX
-        ? `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is elevated where goal signals on the cards drift from recurring review themes.`
-        : `${ratingLine} ${planLine} Signal gap (${vibeGapScore}/100) is high — anchor expectations on review themes, not the most aspirational goal signals on the cards.`;
+        ? `${ratingLine} ${planLine} Signal gap (${formatFitScoreTen(vibeGapScore)}) is elevated where goal signals drift from recurring review themes.`
+        : `${ratingLine} ${planLine} Signal gap (${formatFitScoreTen(vibeGapScore)}) is high — trust the review themes over the goal framing.`;
 
     if (detectedIntent.kind !== "venue_lookup") {
       const intentLabel =
@@ -1769,7 +1805,7 @@ function buildRecommendation(
           : intentFitScore >= 45
             ? "mixed alignment"
             : "weak alignment";
-      body += ` Intent Fit (${intentFitScore}/100) shows ${intentLabel} with “${detectedIntent.label.toLowerCase()}”.`;
+      body += ` Intent fit (${formatFitScoreTen(intentFitScore)}) shows ${intentLabel} with “${detectedIntent.label.toLowerCase()}”.`;
     }
   }
 

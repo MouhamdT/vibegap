@@ -6,19 +6,30 @@ export const EXAMPLE_SEARCH_QUERIES: readonly string[] = [
   "Nobu London vs Sketch for birthday dinner",
 ] as const;
 
+export const EXAMPLE_PLAN_QUERIES: readonly string[] = [
+  "coffee then brunch near Old Town Prague",
+  "study then dinner in Tel Aviv",
+  "drinks then dessert near Trastevere",
+] as const;
+
 export type ExampleSearchChipsProps = {
   disabled?: boolean;
   onSelect: (query: string) => void | Promise<void>;
+  queries?: readonly string[];
 };
 
-export function ExampleSearchChips({ disabled = false, onSelect }: ExampleSearchChipsProps) {
+export function ExampleSearchChips({
+  disabled = false,
+  onSelect,
+  queries = EXAMPLE_SEARCH_QUERIES,
+}: ExampleSearchChipsProps) {
   return (
     <div className="w-full max-w-xl sm:max-w-2xl">
       <p className="text-center text-[10px] font-medium uppercase tracking-[0.16em] text-stone-400 sm:text-left">
         Examples
       </p>
       <ul className="mt-2 flex flex-wrap justify-center gap-1.5 sm:justify-start" aria-label="Example searches">
-        {EXAMPLE_SEARCH_QUERIES.map((q) => (
+        {queries.map((q) => (
           <li key={q}>
             <button
               type="button"

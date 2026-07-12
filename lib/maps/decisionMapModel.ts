@@ -6,6 +6,7 @@ import type {
   RankedCandidate,
   RecommendationGeography,
   SinglePlaceGeography,
+  VisitPlanAnchor,
 } from "@/lib/types/vibecheck";
 import { placeHasCoordinates } from "@/lib/maps/placeCoordinates";
 
@@ -204,6 +205,54 @@ export function compareMapPins(
       isSelected: winnerPlaceId === sideB.place.id,
     });
   }
+  return pins;
+}
+
+export type VisitPlanMapPick = {
+  stopNumber: number;
+  candidate: RankedCandidate;
+};
+
+/** Pins for plan mode: numbered locked stops plus a quiet anchor pin. */
+export function visitPlanMapPins(anchor: VisitPlanAnchor, picks: VisitPlanMapPick[]): DecisionMapPin[] {
+  const pins: DecisionMapPin[] = [];
+
+  for (const pick of [...picks].sort((a, b) => a.stopNumber - b.stopNumber)) {
+    const c = pick.candidate;
+    if (!placeHasCoordinates(c.place)) continue;
+    pins.push({
+      id: c.place.id,
+      kind: "candidate",
+      rank: pick.stopNumber,
+      name: c.place.name,
+      lat: c.place.latitude!,
+      lng: c.place.longitude!,
+      googlePlaceId: googlePlaceIdFromPlace(c.place),
+      decisionLabel: c.decision.label,
+      fitScore: c.fitScore,
+      addressLine: c.place.address,
+      mainRisk: c.mainRisk,
+      isSelected: true,
+    });
+  }
+
+  if (
+    typeof anchor.latitude === "number" &&
+    typeof anchor.longitude === "number" &&
+    Number.isFinite(anchor.latitude) &&
+    Number.isFinite(anchor.longitude)
+  ) {
+    pins.push({
+      id: ANCHOR_PIN_ID,
+      kind: "anchor",
+      rank: null,
+      name: anchor.displayName,
+      lat: anchor.latitude,
+      lng: anchor.longitude,
+      isSelected: false,
+    });
+  }
+
   return pins;
 }
 

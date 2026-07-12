@@ -65,16 +65,16 @@ function MethodologyInner({ className = "" }: { className?: string }) {
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Recommendation style</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
-          Reliable, Balanced, and Discovery adjust how much the ranking favors established review coverage versus venues with
-          fewer reviews that still fit the goal. This updates the same candidate list locally and does not fetch new data.
+          Reliable favors well-reviewed venues; Discovery gives newer or lesser-known spots a chance. Both reorder the same
+          list locally.
         </p>
       </div>
 
       <div>
         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-stone-500">Tune ranking</p>
         <p className="mt-2 text-[12px] leading-relaxed text-stone-700">
-          After search, use <span className="font-medium text-stone-800">Tune ranking</span> to nudge quiet, wait, value, and
-          confidence weights. Changing sliders updates the current results locally. It does not fetch new data.
+          After search, use <span className="font-medium text-stone-800">Tune ranking</span> to set how much quiet and low
+          wait matter (1–10). Updates this list only — doesn&apos;t search again.
         </p>
       </div>
 

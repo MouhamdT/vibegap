@@ -1,3 +1,4 @@
+import { formatFitScoreTen } from "@/lib/format/fitScoreTen";
 import type { CompareResult, RankedCandidate, VibeReport } from "@/lib/types/vibecheck";
 
 export function buildSinglePlaceShareSummary(report: VibeReport): string {
@@ -14,7 +15,7 @@ export function buildRecommendationsShareSummary(
 ): string {
   const loc = nearAnchorName?.trim() ? `near ${nearAnchorName}` : `in ${locationCandidate}`;
   if (!top) return `VibeGap — ${intentLabel} ${loc}. (No ranked pick in this run.)`;
-  return `VibeGap — ${intentLabel} ${loc}. Top pick: ${top.place.name} (${top.decision.label}, fit ${top.fitScore}).`;
+  return `VibeGap — ${intentLabel} ${loc}. Top pick: ${top.place.name} (${top.decision.label}, ${formatFitScoreTen(top.fitScore)}).`;
 }
 
 export function buildCompareShareSummary(compare: CompareResult): string {
